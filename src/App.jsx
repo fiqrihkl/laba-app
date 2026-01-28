@@ -14,7 +14,7 @@ import { AnimatePresence } from "framer-motion";
 // --- IMPORT KONTEKS & UI PREMIUM ---
 import { ModalProvider } from "./context/ModalContext";
 import SplashScreen from "./components/SplashScreen"; 
-import PageLoader from "./components/PageLoader"; // Import komponen loading premium Anda
+import PageLoader from "./components/PageLoader"; 
 
 // --- IMPORT KOMPONEN UI ---
 import Navbar from "./components/Navbar";
@@ -61,7 +61,7 @@ import InvestigasiSFH from "./pages/admin/InvestigasiSFH";
 const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
   const location = useLocation();
 
-  // MENGGUNAKAN PAGELOADER PREMIUM SAAT LOADING
+  // JIKA SEDANG SYNC DATA, TAMPILKAN PAGELOADER PREMIUM
   if (loading) {
     return <PageLoader />;
   }
@@ -84,7 +84,7 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
             ) : role === "anggota" ? (
               <Navigate to="/anggota" replace />
             ) : (
-              /* Auto-logout jika user tidak punya role valid di Firestore */
+              /* Safe Redirect jika data belum sinkron sepenuhnya */
               <Navigate to="/" replace onClick={() => signOut(auth)} />
             )
           }
@@ -142,19 +142,19 @@ function App() {
   const [deferredPrompt, setDeferredPrompt] = useState(null); 
 
   useEffect(() => {
-    // 1. Splash Screen Timer
+    // 1. Timer Splash Screen Premium
     const splashTimer = setTimeout(() => {
       setShowSplash(false);
-    }, 2800); 
+    }, 3000); 
 
-    // 2. PWA Install Prompt Listener
+    // 2. Listener PWA Install
     const installHandler = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
     window.addEventListener("beforeinstallprompt", installHandler);
 
-    // 3. Auth & Role Sync
+    // 3. Listener Status Auth & Sync Firestore
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setLoading(true); 
       if (currentUser) {
@@ -172,7 +172,7 @@ function App() {
             setRole(null);
           }
         } catch (error) {
-          console.error("Error fetching role:", error);
+          console.error("Auth Sync Error:", error);
           setRole(null);
         }
       } else {
@@ -202,10 +202,10 @@ function App() {
               {user && role && <Navbar role={role} />}
 
               <div className={user ? "pb-24 md:pt-20 md:pb-0" : ""}>
-                {/* LOGIKA LOADING PREMIUM DENGAN ANIMEPRESENCE */}
+                {/* 🚀 ANIMASI LOADING TRANSISI ANTAR RUTE */}
                 <AnimatePresence mode="wait">
                    <AnimatedRoutes 
-                    key="routes"
+                    key={loading ? "loading" : "content"} // Force re-render saat status loading berubah
                     user={user} 
                     role={role} 
                     userData={userData} 

@@ -31,16 +31,17 @@ export default function Login({ installPrompt }) {
   const navigate = useNavigate();
   const { showModal } = useModal();
 
+  // Animasi Masuk Halaman
   const containerVariants = {
     initial: { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
     transition: { duration: 0.6, ease: "easeOut" }
   };
 
-  // Efek untuk memicu Modal Install PWA
+  // Efek untuk memicu Modal Install PWA secara otomatis
   useEffect(() => {
     if (installPrompt) {
-      const timer = setTimeout(() => setShowInstallModal(true), 2000);
+      const timer = setTimeout(() => setShowInstallModal(true), 2500);
       return () => clearTimeout(timer);
     }
   }, [installPrompt]);
@@ -69,7 +70,7 @@ export default function Login({ installPrompt }) {
         const userData = querySnapshot.docs[0].data();
         const role = userData.role;
 
-        // REDIRECT LANGSUNG BERDASARKAN ROLE AGAR TIDAK NYANGKUT
+        // REDIRECT INSTAN BERDASARKAN ROLE
         if (role === "admin") {
           navigate("/admin");
         } else if (role === "pembina") {
@@ -77,7 +78,6 @@ export default function Login({ installPrompt }) {
         } else if (role === "anggota") {
           navigate("/anggota");
         } else {
-          // Jika role tidak dikenal, lempar ke root untuk handle default
           navigate("/");
         }
       } else {
@@ -121,7 +121,7 @@ export default function Login({ installPrompt }) {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden italic font-medium text-slate-900">
       
-      {/* 🌊 Background Decoration */}
+      {/* 🌊 Background Decoration Premium */}
       <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] bg-blue-400/10 blur-[120px] rounded-full"></div>
       <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-indigo-400/10 blur-[100px] rounded-full"></div>
       <div className="absolute inset-0 opacity-[0.02] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
@@ -136,12 +136,13 @@ export default function Login({ installPrompt }) {
         <div className="flex flex-col items-center mb-8">
             <motion.div 
               whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className="w-20 h-20 bg-white rounded-[2.2rem] flex items-center justify-center shadow-[0_20px_40px_rgba(30,58,138,0.1)] mb-6 border border-slate-100"
             >
               <img
                 src="/logo/logo.png" 
                 className="w-16 h-16 object-contain"
-                alt="Logo"
+                alt="Logo Laskar Bahari"
               />
             </motion.div>
             <h1 className="text-4xl font-black text-blue-900 tracking-tighter uppercase leading-none">
@@ -153,7 +154,7 @@ export default function Login({ installPrompt }) {
             </div>
         </div>
 
-        {/* MAIN CARD */}
+        {/* MAIN LOGIN CARD */}
         <div className="bg-white/80 backdrop-blur-xl rounded-[3.5rem] border border-white shadow-[0_40px_80px_rgba(15,23,42,0.08)] overflow-hidden">
           <div className="p-8 md:p-10">
             <form onSubmit={handleLogin} className="space-y-6">
@@ -228,60 +229,62 @@ export default function Login({ installPrompt }) {
                 </Link>
               </div>
 
-              <div className="flex items-center gap-4 w-full">
-                <div className="h-[1px] flex-1 bg-slate-100"></div>
-                <span className="text-[8px] font-black text-slate-300 uppercase tracking-[0.3em]">Identity Hub</span>
-                <div className="h-[1px] flex-1 bg-slate-100"></div>
+              <div className="flex items-center gap-4 w-full opacity-30">
+                <div className="h-[1px] flex-1 bg-slate-300"></div>
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">Identity Hub</span>
+                <div className="h-[1px] flex-1 bg-slate-300"></div>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Branding Footer */}
         <div className="mt-12 text-center">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.5em] leading-loose">
-              Dikembangkan oleh <span className="text-slate-600 font-black">Fiqri Haikal</span> — LABA APP v1.0<br />
+              Dikembangkan oleh <span className="text-slate-600 font-black uppercase">Fiqri Haikal</span> — LABA APP v1.0<br />
               © 2026 — Laskar Bahari SMPN 1 Biau
             </p>
         </div>
       </motion.div>
 
       {/* MODAL INSTALL PWA PREMIUM */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showInstallModal && (
-          <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
+          <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
             <motion.div 
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="bg-white w-full max-w-sm rounded-[3rem] overflow-hidden shadow-2xl border border-white italic"
             >
               <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-10 text-center text-white relative">
                 <button 
                   onClick={() => setShowInstallModal(false)} 
-                  className="absolute top-6 right-6 opacity-50 hover:opacity-100 transition-opacity"
+                  className="absolute top-6 right-6 opacity-50 hover:opacity-100 transition-opacity p-2 hover:bg-white/10 rounded-full"
                 >
-                  <HiOutlineX size={24} />
+                  <HiOutlineX size={20} />
                 </button>
                 <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/30 shadow-xl">
                   <HiOutlineDownload size={32} className="animate-bounce" />
                 </div>
                 <h2 className="text-2xl font-black uppercase tracking-tighter leading-none italic">Pasang Aplikasi</h2>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] mt-2 opacity-70">Digital Scout Experience</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] mt-2 opacity-70 font-sans">Digital Scout Experience</p>
               </div>
-              <div className="p-8 text-center">
+              <div className="p-8 text-center font-sans">
                 <p className="text-xs font-bold text-slate-500 leading-relaxed italic mb-8 px-2">
                   Dapatkan akses instan ke radar SKU, leaderboard, dan notifikasi real-time langsung dari layar utama HP kamu.
                 </p>
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 font-medium">
                   <button 
                     onClick={handleInstallApp} 
-                    className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all"
+                    className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl active:scale-95 transition-all"
                   >
                     Instal Sekarang
                   </button>
                   <button 
                     onClick={() => setShowInstallModal(false)} 
-                    className="text-[10px] font-black text-slate-400 uppercase tracking-widest py-2"
+                    className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] py-2 hover:text-slate-600 transition-colors"
                   >
                     Mungkin Nanti
                   </button>
