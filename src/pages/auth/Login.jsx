@@ -141,7 +141,7 @@ export default function Login({ installPrompt }) {
 
               <button type="submit" disabled={loading} className="w-full relative group overflow-hidden bg-slate-900 text-white font-black py-5 rounded-[2rem] shadow-xl active:scale-95 transition-all mt-2">
                 <div className="relative flex items-center justify-center gap-3 uppercase tracking-[0.2em] text-[11px]">
-                  {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <><span>Mulai Petualangan</span><HiOutlineLogin size={18} /></>}
+                  {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <><span>Mulai</span><HiOutlineLogin size={18} /></>}
                 </div>
               </button>
             </form>
