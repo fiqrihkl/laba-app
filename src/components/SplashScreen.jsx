@@ -22,10 +22,10 @@ export default function SplashScreen() {
         >
           {/* Logo Gambar Aplikasi */}
           <img
-  src="../public/logo/logo.png" // Path otomatis mengarah ke folder public
-  className="w-16 h-16 object-contain"
-  alt="Laskar Bahari Logo"
-/>
+            src="/logo/logo.png" // Path otomatis mengarah ke folder public
+            className="w-16 h-16 object-contain"
+            alt="Laskar Bahari Logo"
+            />
         </motion.div>
 
         {/* 📝 Text Branding Animation */}
