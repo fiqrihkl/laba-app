@@ -11,13 +11,24 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+
+// IMPORT REACT ICONS
+import { 
+  HiOutlineChevronLeft, 
+  HiOutlineSearch, 
+  HiOutlineSpeakerphone, 
+  HiOutlineBadgeCheck,
+  HiOutlineClock,
+  HiX
+} from "react-icons/hi";
 
 export default function Announcements() {
   const [announcements, setAnnouncements] = useState([]);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedInfo, setSelectedInfo] = useState(null); // State untuk Modal
+  const [selectedInfo, setSelectedInfo] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -76,194 +87,197 @@ export default function Announcements() {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 italic">
-        <p className="font-black text-blue-900 animate-pulse uppercase text-[10px] tracking-[0.3em]">
-          Mengakses Data Pusat...
-        </p>
+      <div className="min-h-screen flex items-center justify-center bg-[#020617]">
+        <motion.div 
+          animate={{ rotate: 360 }} 
+          transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+        >
+          <HiOutlineSpeakerphone size={40} className="text-red-600 opacity-50" />
+        </motion.div>
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex justify-center pb-24 text-slate-900 italic">
-      <div className="w-full max-w-md bg-white min-h-screen shadow-2xl flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-[#020617] text-slate-100 pb-32 font-sans selection:bg-red-800 overflow-x-hidden">
+      <div className="w-full max-w-md mx-auto min-h-screen flex flex-col relative shadow-2xl border-x border-white/5 bg-[#020617]">
+        
         {/* HEADER AREA */}
-        <div className="bg-gradient-to-br from-blue-900 to-slate-900 pt-12 pb-20 px-8 rounded-b-[4rem] relative overflow-hidden text-white shadow-xl">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+        <div className="bg-gradient-to-br from-[#7f1d1d] via-[#450a0a] to-[#020617] pt-12 pb-24 px-8 rounded-b-[4rem] relative overflow-hidden shadow-3xl">
+          <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
 
           <div className="flex items-center justify-between relative z-10 mb-8">
             <button
               onClick={() => navigate(-1)}
-              className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 active:scale-90 transition">
-              <img
-                src="https://cdn-icons-png.flaticon.com/128/271/271220.png"
-                className="w-4 h-4 brightness-0 invert"
-                alt="back"
-              />
+              className="w-10 h-10 bg-white/5 backdrop-blur-xl rounded-xl flex items-center justify-center border border-white/10 active:scale-90 transition">
+              <HiOutlineChevronLeft size={20} className="text-white" />
             </button>
-            <h1 className="text-[10px] font-black tracking-[0.5em] uppercase opacity-60">
-              Archive Center
-            </h1>
+            <h1 className="text-[10px] font-black tracking-[0.5em] uppercase opacity-50 italic">Archive Radar</h1>
             <div className="w-10"></div>
           </div>
 
           <div className="relative z-10">
-            <h2 className="text-2xl font-black uppercase tracking-tighter leading-tight italic">
-              Timeline Informasi
+            <h2 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
+              Pusat <br /> <span className="text-red-600">Notifikasi</span>
             </h2>
-            <p className="text-blue-300 text-[9px] font-bold uppercase tracking-[0.2em] mt-2">
-              Gudep 10.491-10.492 SMPN 1 Biau
-            </p>
+            <div className="flex items-center gap-2 mt-4">
+              <div className="h-1 w-12 bg-red-600 rounded-full" />
+              <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em]">
+                Gudep 10.491-10.492 SMPN 1 Biau
+              </p>
+            </div>
           </div>
+          
+          <HiOutlineSpeakerphone className="absolute -bottom-10 -right-10 w-48 h-48 text-white opacity-[0.03] rotate-12" />
         </div>
 
         {/* SEARCH BOX */}
-        <div className="px-6 -mt-8 relative z-20">
-          <div className="bg-white rounded-3xl p-2 shadow-2xl border border-slate-100 flex items-center group">
-            <div className="w-10 h-10 flex items-center justify-center opacity-30">
-              <img
-                src="https://cdn-icons-png.flaticon.com/128/622/622669.png"
-                className="w-4 h-4"
-                alt="search"
-              />
+        <div className="px-6 -mt-10 relative z-20">
+          <div className="bg-slate-900/60 backdrop-blur-3xl rounded-3xl p-2 border border-white/10 flex items-center group shadow-2xl">
+            <div className="w-10 h-10 flex items-center justify-center opacity-30 group-focus-within:opacity-100 transition-opacity">
+              <HiOutlineSearch size={18} className="text-red-500" />
             </div>
             <input
               type="text"
-              placeholder="Cari arsip pengumuman..."
-              className="flex-1 bg-transparent border-none p-3 text-xs font-bold outline-none italic placeholder:text-slate-300"
+              placeholder="Search briefing archive..."
+              className="flex-1 bg-transparent border-none p-3 text-xs font-bold outline-none italic text-white placeholder:text-slate-600"
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
 
         {/* CONTENT LIST */}
-        <div className="px-6 mt-8 space-y-5 pb-10 flex-1">
+        <div className="px-6 mt-10 space-y-6 pb-10 flex-1 overflow-y-auto scrollbar-hide">
           {filteredData.length === 0 ? (
-            <div className="py-20 text-center opacity-20">
-              <img
-                src="https://cdn-icons-png.flaticon.com/128/7486/7486744.png"
-                className="w-16 h-16 mx-auto mb-4 grayscale"
-                alt="empty"
-              />
-              <p className="text-[10px] font-black uppercase tracking-widest">
-                Informasi tidak ditemukan
+            <div className="py-20 text-center">
+              <HiOutlineSpeakerphone size={60} className="mx-auto mb-4 text-slate-800 opacity-20" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 italic">
+                Sinyal informasi tidak ditemukan
               </p>
             </div>
           ) : (
-            filteredData.map((info) => (
-              <div
+            filteredData.map((info, index) => (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
                 key={info.id}
                 onClick={() => handleOpenDetail(info)}
-                className="bg-white border border-slate-100 p-6 rounded-[2.5rem] shadow-xl hover:shadow-2xl transition-all duration-500 group active:scale-95 cursor-pointer relative overflow-hidden">
+                className="bg-slate-900/40 backdrop-blur-md border border-white/5 p-6 rounded-[2.5rem] hover:border-red-500/30 transition-all duration-500 group active:scale-95 cursor-pointer relative overflow-hidden shadow-xl">
+                
                 <div className="flex justify-between items-start mb-4">
-                  <span className="text-[7px] bg-slate-100 px-3 py-1 rounded-lg font-black text-slate-400 uppercase tracking-widest">
-                    {info.date}
-                  </span>
-                  {userData?.claimedXP?.includes(info.id) ? (
-                    <div className="flex items-center gap-1.5 bg-green-50 px-2 py-0.5 rounded-md border border-green-100">
-                      <img
-                        src="https://cdn-icons-png.flaticon.com/128/10629/10629607.png"
-                        className="w-2.5 h-2.5"
-                        alt="done"
-                      />
-                      <span className="text-[7px] font-black text-green-600 uppercase">
-                        Read
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 bg-yellow-400 rounded-md px-2 py-0.5 animate-pulse">
-                      <span className="text-[7px] font-black text-blue-900 uppercase">
-                        +50 XP
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <HiOutlineClock className="text-red-600 w-3 h-3" />
+                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                      {info.date || "Terbaru"}
+                    </span>
+                  </div>
+                  
+                  <AnimatePresence mode="wait">
+                    {userData?.claimedXP?.includes(info.id) ? (
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                        <HiOutlineBadgeCheck className="w-3 h-3 text-emerald-500" />
+                        <span className="text-[7px] font-black text-emerald-500 uppercase">Archive Read</span>
+                      </motion.div>
+                    ) : (
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-red-600 px-3 py-1 rounded-full shadow-lg shadow-red-600/20 animate-pulse">
+                        <span className="text-[7px] font-black text-white uppercase tracking-tighter">
+                          +50 XP RADAR
+                        </span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                <h3 className="font-black text-sm text-slate-800 uppercase tracking-tight italic group-hover:text-blue-900 transition-colors">
+                <h3 className="font-black text-sm text-slate-200 uppercase tracking-tight italic group-hover:text-red-500 transition-colors leading-tight mb-3">
                   {info.title}
                 </h3>
 
-                {/* TRUNCATED TEXT (Baca Selengkapnya Trigger) */}
-                <p className="mt-3 text-[10px] text-slate-400 font-medium leading-relaxed italic line-clamp-2">
+                <p className="text-[10px] text-slate-500 font-medium leading-relaxed italic line-clamp-2">
                   {info.content}
                 </p>
 
-                <div className="mt-4 flex items-center gap-2 text-blue-600">
-                  <span className="text-[8px] font-black uppercase tracking-widest">
-                    Baca Selengkapnya
+                <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
+                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-red-600 group-hover:tracking-[0.3em] transition-all">
+                    Expand Briefing
                   </span>
-                  <div className="w-4 h-[1px] bg-blue-600/30"></div>
+                  <div className="w-8 h-[1px] bg-red-600/30 group-hover:w-12 transition-all"></div>
                 </div>
-              </div>
+              </motion.div>
             ))
           )}
         </div>
 
-        {/* MODAL DETAIL (MODERN EXPANSION) */}
-        {selectedInfo && (
-          <div className="fixed inset-0 z-[100] flex items-end justify-center p-4 animate-in fade-in duration-300">
-            <div
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-              onClick={() => setSelectedInfo(null)}></div>
+        {/* MODAL DETAIL */}
+        <AnimatePresence>
+          {selectedInfo && (
+            <div className="fixed inset-0 z-[1100] flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+                onClick={() => setSelectedInfo(null)} />
 
-            <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl relative z-[110] animate-in slide-in-from-bottom-10 duration-500 overflow-hidden">
-              <div className="bg-slate-50 p-8 border-b border-slate-100 relative">
-                <button
-                  onClick={() => setSelectedInfo(null)}
-                  className="absolute top-6 right-6 w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center active:scale-90 transition">
-                  <span className="text-slate-500 text-xs font-black">✕</span>
-                </button>
-                <span className="text-[8px] bg-blue-900 text-white px-3 py-1 rounded-lg font-black uppercase tracking-[0.2em]">
-                  Detail Informasi
-                </span>
-                <h3 className="mt-4 text-xl font-black text-slate-800 uppercase tracking-tighter italic leading-tight">
-                  {selectedInfo.title}
-                </h3>
-                <p className="text-[9px] text-slate-400 font-bold mt-2 uppercase tracking-widest">
-                  Dipublikasikan: {selectedInfo.date}
-                </p>
-              </div>
+              <motion.div 
+                initial={{ scale: 0.9, y: 50, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.9, y: 50, opacity: 0 }}
+                className="bg-slate-900 w-full max-w-sm rounded-[3.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] relative z-[1110] border border-white/10 overflow-hidden">
+                
+                <div className="bg-gradient-to-br from-red-600 to-red-900 p-10 relative overflow-hidden">
+                  <button
+                    onClick={() => setSelectedInfo(null)}
+                    className="absolute top-6 right-6 w-10 h-10 bg-black/20 rounded-full flex items-center justify-center text-white active:scale-90 transition hover:bg-black/40">
+                    <HiX size={20} />
+                  </button>
+                  
+                  <span className="text-[9px] bg-black/30 text-white px-4 py-1.5 rounded-full font-black uppercase tracking-[0.2em] border border-white/10">
+                    Mission Intelligence
+                  </span>
+                  <h3 className="mt-6 text-2xl font-black text-white uppercase tracking-tighter italic leading-none">
+                    {selectedInfo.title}
+                  </h3>
+                  <div className="mt-4 flex items-center gap-2 opacity-60">
+                    <HiOutlineClock className="text-white w-3 h-3" />
+                    <p className="text-[9px] text-white font-bold uppercase tracking-widest">
+                      Broadcasted: {selectedInfo.date}
+                    </p>
+                  </div>
+                </div>
 
-              <div className="p-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                <p className="text-xs text-slate-600 font-medium leading-[1.8] italic whitespace-pre-wrap">
-                  {selectedInfo.content}
-                </p>
-              </div>
+                <div className="p-10 max-h-[45vh] overflow-y-auto custom-scroll bg-[#020617]/50">
+                  <p className="text-[12px] text-slate-300 font-bold leading-relaxed italic whitespace-pre-wrap">
+                    {selectedInfo.content}
+                  </p>
+                </div>
 
-              <div className="p-8 bg-slate-50 border-t border-slate-100">
-                <button
-                  onClick={() => setSelectedInfo(null)}
-                  className="w-full bg-blue-900 text-white py-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] shadow-xl active:scale-95 transition-all italic">
-                  Saya Mengerti
-                </button>
-              </div>
+                <div className="p-8 bg-slate-900 border-t border-white/5">
+                  <button
+                    onClick={() => setSelectedInfo(null)}
+                    className="w-full bg-white text-black py-5 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] shadow-xl active:scale-95 transition-all italic">
+                    Roger That!
+                  </button>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
 
-        {/* FOOTER IDENTITAS DEVELOPER */}
-        <div className="px-8 py-10 text-center border-t border-slate-50 mt-auto">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-loose italic">
-            Dikembangkan oleh <span className="text-blue-600">Fiqri Haikal</span> — LABA APP v1.0<br />
+        {/* FOOTER */}
+        <div className="px-8 py-12 text-center border-t border-white/5 mt-auto bg-slate-950/50">
+          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest leading-loose italic">
+            Developed by <span className="text-red-600 font-black">Fiqri Haikal</span> — LABA APP v1.0<br />
             Level Up Your Scout Adventure!<br />
             © 2026 — Laskar Bahari SMPN 1 Biau
           </p>
         </div>
       </div>
 
-      <style>{`
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;  
-          overflow: hidden;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #e2e8f0;
-          border-radius: 10px;
-        }
+      <style jsx>{`
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .shadow-3xl { box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8); }
       `}</style>
     </div>
   );

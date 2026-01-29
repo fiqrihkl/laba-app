@@ -9,12 +9,12 @@ import {
 import { auth, db } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { AnimatePresence } from "framer-motion"; 
+import { AnimatePresence } from "framer-motion";
 
 // --- IMPORT KONTEKS & UI PREMIUM ---
 import { ModalProvider } from "./context/ModalContext";
-import SplashScreen from "./components/SplashScreen"; 
-import PageLoader from "./components/PageLoader"; 
+import SplashScreen from "./components/SplashScreen";
+import PageLoader from "./components/PageLoader";
 
 // --- IMPORT KOMPONEN UI ---
 import Navbar from "./components/Navbar";
@@ -199,7 +199,9 @@ function App() {
           <Router>
             <div className="bg-slate-50 min-h-screen">
               {user && role && <NotificationListener user={user} />}
-              {user && role && <Navbar role={role} />}
+              
+              {/* --- NAVBAR GLOBAL DENGAN SYNC USERDATA --- */}
+              {user && role && <Navbar role={role} userData={userData} />}
 
               <div className={user ? "pb-24 md:pt-20 md:pb-0" : ""}>
                 {/* 🚀 ANIMASI LOADING TRANSISI ANTAR RUTE */}

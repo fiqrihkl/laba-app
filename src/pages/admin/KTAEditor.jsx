@@ -17,6 +17,7 @@ export default function KTAEditor() {
     "jenis_kelamin",
     "agama",
     "jabatan",
+    "tingkatan", // PENAMBAHAN DATA TINGKATAN
     "kwarran",
     "kwarcab",
     "pasFoto",
@@ -25,6 +26,7 @@ export default function KTAEditor() {
 
   const defaultConfig = {
     templateURL: "",
+    backTemplateURL: "", // PENAMBAHAN TEMPLATE BELAKANG
     elements: {
       nama: { x: 30, y: 25, fontSize: 16, color: "#000000" },
       nta: { x: 30, y: 32, fontSize: 14, color: "#000000" },
@@ -32,6 +34,7 @@ export default function KTAEditor() {
       jenis_kelamin: { x: 30, y: 43, fontSize: 12, color: "#000000" },
       agama: { x: 30, y: 46, fontSize: 12, color: "#000000" },
       jabatan: { x: 30, y: 53, fontSize: 12, color: "#000000" },
+      tingkatan: { x: 30, y: 57, fontSize: 12, color: "#000000" }, // POSISI DEFAULT TINGKATAN
       kwarran: { x: 30, y: 60, fontSize: 12, color: "#000000" },
       kwarcab: { x: 30, y: 67, fontSize: 12, color: "#000000" },
       pasFoto: { x: 10, y: 20, width: 80, height: 110 },
@@ -63,7 +66,6 @@ export default function KTAEditor() {
     if (!containerRef.current || e.clientX === 0 || !config) return;
     const rect = containerRef.current.getBoundingClientRect();
     
-    // Hitung posisi berdasarkan ukuran asli 1011x638 yang ter-render di layar
     let x = ((e.clientX - rect.left) / rect.width) * 100;
     let y = ((e.clientY - rect.top) / rect.height) * 100;
 
@@ -106,14 +108,18 @@ export default function KTAEditor() {
     }
   };
 
-  const handleTemplateUpload = (e) => {
+  const handleTemplateUpload = (e, side) => {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
-      setConfig((prev) => ({ ...prev, templateURL: reader.result }));
+      if (side === "front") {
+        setConfig((prev) => ({ ...prev, templateURL: reader.result }));
+      } else {
+        setConfig((prev) => ({ ...prev, backTemplateURL: reader.result }));
+      }
       setUploading(false);
     };
   };
@@ -128,7 +134,7 @@ export default function KTAEditor() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row italic overflow-hidden">
-      <div className="flex-1 p-4 md:p-8 flex flex-col items-center justify-center">
+      <div className="flex-1 p-4 md:p-8 flex flex-col items-center justify-center overflow-y-auto">
         <div className="mb-6 flex justify-between w-full max-w-4xl items-center px-4">
           <Link to="/admin" className="text-[10px] font-black uppercase bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-200">
             Kembali
@@ -141,28 +147,26 @@ export default function KTAEditor() {
           </button>
         </div>
 
-        {/* WRAPPER UNTUK SKALA PREVIEW */}
-        <div className="w-full flex justify-center items-center py-10 bg-slate-200/50 rounded-[3rem] shadow-inner overflow-hidden">
+        {/* --- PREVIEW BAGIAN DEPAN --- */}
+        <p className="text-[9px] font-black uppercase text-slate-400 mb-4 tracking-widest italic">Preview Bagian Depan (Draggable)</p>
+        <div className="w-full flex justify-center items-center py-10 bg-slate-200/50 rounded-[3rem] shadow-inner overflow-hidden mb-10">
           <div
             ref={containerRef}
             onDragOver={(e) => e.preventDefault()}
             className="relative bg-white shadow-2xl shrink-0"
             style={{
-              width: "1011px", // KUNCI UKURAN ASLI
-              height: "638px", // KUNCI UKURAN ASLI
-              backgroundImage: `url(${config.templateURL || "https://via.placeholder.com/1011x638?text=Upload+Template+KTA"})`,
+              width: "1011px",
+              height: "638px",
+              backgroundImage: `url(${config.templateURL || "https://via.placeholder.com/1011x638?text=Upload+Depan+KTA"})`,
               backgroundSize: "100% 100%",
-              backgroundPosition: "center",
-              // Gunakan transform scale agar muat di layar editor tanpa merusak pixel elemen
               transform: "scale(var(--editor-scale, 0.5))",
               transformOrigin: "center center",
             }}
           >
-            {/* CSS Variabel untuk responsivitas editor saja */}
             <style>{`
               :root { --editor-scale: 0.35; }
-              @media (min-width: 768px) { --editor-scale: 0.5; }
-              @media (min-width: 1280px) { --editor-scale: 0.7; }
+              @media (min-width: 768px) { --editor-scale: 0.45; }
+              @media (min-width: 1280px) { --editor-scale: 0.55; }
             `}</style>
 
             {elementKeys.map((key) => {
@@ -195,6 +199,7 @@ export default function KTAEditor() {
                   {isText ? (
                     key === "nama" ? "MUHAMMAD FIKRI..." : 
                     key === "jenis_kelamin" ? "LAKI-LAKI" : 
+                    key === "tingkatan" ? "PENGGALANG RAMU" :
                     key.toUpperCase()
                   ) : (
                     <div className="text-[8px] font-black w-full text-center uppercase">
@@ -206,6 +211,22 @@ export default function KTAEditor() {
             })}
           </div>
         </div>
+
+        {/* --- PREVIEW BAGIAN BELAKANG (STATIS) --- */}
+        <p className="text-[9px] font-black uppercase text-slate-400 mb-4 tracking-widest italic">Preview Bagian Belakang (Statis)</p>
+        <div className="w-full flex justify-center items-center py-10 bg-slate-200/50 rounded-[3rem] shadow-inner overflow-hidden">
+             <div 
+                className="bg-white shadow-2xl shrink-0"
+                style={{
+                    width: "1011px",
+                    height: "638px",
+                    backgroundImage: `url(${config.backTemplateURL || "https://via.placeholder.com/1011x638?text=Upload+Belakang+KTA"})`,
+                    backgroundSize: "100% 100%",
+                    transform: "scale(var(--editor-scale, 0.5))",
+                    transformOrigin: "center center",
+                }}
+             />
+        </div>
       </div>
 
       {/* SIDEBAR CONTROL PANEL */}
@@ -214,14 +235,28 @@ export default function KTAEditor() {
           Control Panel
         </h2>
 
-        <div className="mb-10 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 shadow-inner">
+        {/* UPLOAD TEMPLATE DEPAN */}
+        <div className="mb-6 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 shadow-inner text-center">
           <label className="text-[10px] font-black uppercase text-blue-900 block mb-4 tracking-widest">
-            Template KTA (1011x638)
+            Template Depan (1011x638)
           </label>
           <input
             type="file"
-            onChange={handleTemplateUpload}
+            onChange={(e) => handleTemplateUpload(e, "front")}
             className="text-[10px] w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-blue-900 file:text-white"
+            accept="image/*"
+          />
+        </div>
+
+        {/* UPLOAD TEMPLATE BELAKANG */}
+        <div className="mb-10 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 shadow-inner text-center">
+          <label className="text-[10px] font-black uppercase text-red-900 block mb-4 tracking-widest">
+            Template Belakang (1011x638)
+          </label>
+          <input
+            type="file"
+            onChange={(e) => handleTemplateUpload(e, "back")}
+            className="text-[10px] w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-red-900 file:text-white"
             accept="image/*"
           />
         </div>

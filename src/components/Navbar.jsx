@@ -1,23 +1,37 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
+import { motion, AnimatePresence } from "framer-motion";
+import TombolSOS from "../pages/anggota/TombolSOS";
 
-// IMPORT REACT ICONS - Perbaikan HiQrCode menjadi HiQrcode
+// IMPORT REACT ICONS
 import { 
-  HiHome, 
-  HiAcademicCap, 
-  HiBell, 
-  HiUser, 
-  HiQrcode, 
-  HiShieldCheck, 
+  HiOutlineUser, 
+  HiOutlineBookOpen, 
+  HiOutlineShieldCheck, 
+  HiOutlineBell, 
   HiOutlineLogout,
-  HiClipboardCheck
+  HiOutlineHome,
+  HiOutlineQrcode,
+  HiOutlineClipboardCheck,
+  HiOutlineAcademicCap,
+  HiLightningBolt,
+  HiExclamation,
+  HiX
 } from "react-icons/hi";
 
-export default function Navbar({ role }) {
+export default function Navbar({ role, userData }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [showSfhMenu, setShowSfhMenu] = useState(false);
+  const [showSosModal, setShowSosModal] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  // Reset error state jika photoURL berubah (misal setelah user upload foto baru)
+  useEffect(() => {
+    setImgError(false);
+  }, [userData?.photoURL]);
 
   const handleLogout = () => {
     if (window.confirm("Keluar dari Laskar Bahari?")) {
@@ -26,125 +40,173 @@ export default function Navbar({ role }) {
     }
   };
 
-  // --- KONFIGURASI MENU MINIMALIS BERDASARKAN ROLE ---
   const menuConfig = {
     admin: [
-      {
-        name: "Home",
-        path: "/admin",
-        icon: <HiHome className="w-6 h-6" />,
-      },
-      {
-        name: "Verif", // Hub untuk Verif Tingkat & Master SKU
-        path: "/admin/verifikasi-tingkat",
-        icon: <HiClipboardCheck className="w-6 h-6" />,
-      },
-      {
-        name: "SFH", // Hub Investigasi
-        path: "/admin/investigasi-sfh",
-        icon: <HiShieldCheck className="w-6 h-6" />,
-      },
-      {
-        name: "Profil",
-        path: "/profile",
-        icon: <HiUser className="w-6 h-6" />,
-      },
+      { name: "Home", path: "/admin", icon: <HiOutlineHome size={26} /> },
+      { name: "Verif", path: "/admin/verifikasi-tingkat", icon: <HiOutlineClipboardCheck size={26} /> },
+      { name: "SFH", path: "/admin/investigasi-sfh", icon: <HiOutlineShieldCheck size={26} /> },
+      { name: "Profil", path: "/profile", icon: null, isAvatar: true },
     ],
     pembina: [
-      {
-        name: "Home",
-        path: "/pembina",
-        icon: <HiHome className="w-6 h-6" />,
-      },
-      {
-        name: "Scan",
-        path: "/pembina/scanner",
-        icon: <HiQrcode className="w-6 h-6" />,
-      },
-      {
-        name: "Ujian", // Hub Verifikasi SKU & SOS
-        path: "/pembina/verifikasi-sku",
-        icon: <HiAcademicCap className="w-6 h-6" />,
-      },
-      {
-        name: "Profil",
-        path: "/profile",
-        icon: <HiUser className="w-6 h-6" />,
-      },
+      { name: "Home", path: "/pembina", icon: <HiOutlineHome size={26} /> },
+      { name: "Scan", path: "/pembina/scanner", icon: <HiOutlineQrcode size={26} /> },
+      { name: "Ujian", path: "/pembina/verifikasi-sku", icon: <HiOutlineAcademicCap size={26} /> },
+      { name: "Profil", path: "/profile", icon: null, isAvatar: true },
     ],
     anggota: [
-      {
-        name: "Home",
-        path: "/anggota",
-        icon: <HiHome className="w-6 h-6" />,
-      },
-      {
-        name: "SKU",
-        path: "/sku",
-        icon: <HiAcademicCap className="w-6 h-6" />,
-      },
-      {
-        name: "Notif",
-        path: "/riwayat-status",
-        icon: <HiBell className="w-6 h-6" />,
-      },
-      {
-        name: "Profil",
-        path: "/profile",
-        icon: <HiUser className="w-6 h-6" />,
-      },
+      { name: "Home", path: "/anggota", icon: <HiOutlineHome size={26} /> },
+      { name: "SKU", path: "/sku", icon: <HiOutlineBookOpen size={26} /> },
+      { name: "SFH", path: "#", icon: <HiOutlineShieldCheck size={36} />, isSpecial: true },
+      { name: "Notif", path: "/riwayat-status", icon: <HiOutlineBell size={26} /> },
+      { name: "Profil", path: "/profile", icon: null, isAvatar: true },
     ],
   };
 
   const activeMenu = menuConfig[role] || [];
 
   return (
-    <nav className="fixed bottom-4 left-4 right-4 bg-white/90 backdrop-blur-xl border border-white/40 rounded-[2.5rem] px-6 py-3 z-[100] shadow-[0_20px_50px_rgba(0,0,0,0.1)] md:top-0 md:bottom-auto md:left-0 md:right-0 md:rounded-none italic">
-      <div className="max-w-5xl mx-auto flex justify-between items-center">
-        <div className="flex justify-around items-center w-full md:w-auto md:gap-12">
+    <>
+      {/* 1. MODAL OVERLAY UNTUK SOS */}
+      <AnimatePresence>
+        {showSosModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-[#020617]/95 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 50, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 50, opacity: 0 }}
+              className="relative w-full max-w-sm"
+            >
+              <button 
+                onClick={() => setShowSosModal(false)}
+                className="absolute -top-14 right-0 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white border border-white/20 active:scale-90 transition-all shadow-xl"
+              >
+                <HiX size={24} />
+              </button>
+              <TombolSOS userProfile={userData} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 2. NAVBAR UTAMA */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-[1000] italic font-medium">
+        
+        {/* OVERLAY SFH MENU */}
+        <AnimatePresence>
+          {showSfhMenu && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSfhMenu(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm h-screen w-screen -left-[50vw]"
+              style={{ zIndex: -1 }}
+            />
+          )}
+        </AnimatePresence>
+
+        <div className="bg-[#020617]/90 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,1)] border border-white/10 px-4 py-2 flex justify-between items-center relative">
+          
           {activeMenu.map((item) => {
             const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className="flex flex-col items-center gap-1 group relative transition-all"
-              >
-                <div className={`transition-all duration-300 ${
-                    isActive
-                      ? "text-blue-900 scale-110 drop-shadow-[0_0_8px_rgba(30,58,138,0.3)]"
-                      : "text-slate-300 group-hover:text-blue-400"
-                  }`}>
-                  {item.icon}
-                </div>
-                
-                <span
-                  className={`text-[7px] font-black uppercase tracking-widest transition-colors duration-300 ${
-                    isActive ? "text-blue-900" : "text-slate-300"
-                  }`}
-                >
-                  {item.name}
-                </span>
 
-                {isActive && (
-                  <div className="absolute -bottom-1.5 w-1 h-1 bg-blue-900 rounded-full"></div>
-                )}
+            // --- LOGIKA TOMBOL SFH (KHUSUS ANGGOTA) ---
+            if (item.isSpecial) {
+              return (
+                <div key="sfh-central" className="relative">
+                  <AnimatePresence>
+                    {showSfhMenu && (
+                      <div className="absolute -top-24 left-1/2 -translate-x-1/2 flex items-end gap-6 justify-center w-[200px]">
+                        <motion.button
+                          initial={{ x: 20, y: 50, opacity: 0, scale: 0 }}
+                          animate={{ x: -45, y: 0, opacity: 1, scale: 1 }}
+                          exit={{ x: 20, y: 50, opacity: 0, scale: 0 }}
+                          onClick={() => { setShowSfhMenu(false); setShowSosModal(true); }}
+                          className="w-16 h-16 bg-white rounded-full flex flex-col items-center justify-center text-red-600 shadow-xl border-4 border-red-600"
+                        >
+                          <HiLightningBolt size={24} className="animate-pulse" />
+                          <span className="text-[9px] font-black italic">SOS</span>
+                        </motion.button>
+
+                        <motion.button
+                          initial={{ x: -20, y: 50, opacity: 0, scale: 0 }}
+                          animate={{ x: 45, y: 0, opacity: 1, scale: 1 }}
+                          exit={{ x: -20, y: 50, opacity: 0, scale: 0 }}
+                          onClick={() => { setShowSfhMenu(false); navigate("/lapor-insiden"); }}
+                          className="w-16 h-16 bg-red-600 rounded-full flex flex-col items-center justify-center text-white shadow-xl border-4 border-white"
+                        >
+                          <HiExclamation size={24} />
+                          <span className="text-[9px] font-black italic">LAPOR</span>
+                        </motion.button>
+                      </div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="relative -top-12">
+                    <motion.button 
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setShowSfhMenu(!showSfhMenu)}
+                      className={`w-20 h-20 bg-gradient-to-b rounded-full flex flex-col items-center justify-center text-white shadow-2xl border-[6px] border-[#020617] transition-all duration-300 ${showSfhMenu ? 'from-orange-500 to-orange-700 rotate-180' : 'from-red-600 to-red-900'}`}
+                    >
+                      <HiOutlineShieldCheck size={36} />
+                      <span className="text-[8px] font-black mt-1 uppercase">Secure</span>
+                    </motion.button>
+                  </div>
+                </div>
+              );
+            }
+
+            // --- LOGIKA AVATAR PROFIL (INISIAL FALLBACK) ---
+            if (item.isAvatar) {
+              return (
+                <Link key={item.path} to={item.path} className="flex flex-col items-center gap-1 p-2">
+                  <div className={`w-8 h-8 rounded-full border-2 overflow-hidden shadow-lg transition-all flex items-center justify-center ${isActive ? "border-red-600 scale-110" : "border-white/10 grayscale"}`}>
+                    {userData?.photoURL && !imgError ? (
+                      <img 
+                        src={userData.photoURL} 
+                        alt="Me" 
+                        className="w-full h-full object-cover" 
+                        onError={() => setImgError(true)}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-tr from-slate-700 to-slate-900 flex items-center justify-center text-white font-black text-[10px] uppercase">
+                        {userData?.nama ? userData.nama.substring(0, 2) : "LB"}
+                      </div>
+                    )}
+                  </div>
+                  <span className={`text-[8px] font-black uppercase ${isActive ? "text-red-600" : "text-slate-500"}`}>{item.name}</span>
+                </Link>
+              );
+            }
+
+            // --- MENU LAIN ---
+            return (
+              <Link 
+                key={item.path} 
+                to={item.path} 
+                className={`flex flex-col items-center gap-1.5 p-2 transition-all ${isActive ? "text-red-600 scale-110" : "text-slate-500 hover:text-white"}`}
+              >
+                <div>{item.icon}</div>
+                <span className="text-[8px] font-black uppercase">{item.name}</span>
               </Link>
             );
           })}
 
-          {/* BUTTON LOGOUT MINIMALIS */}
-          <button
-            onClick={handleLogout}
-            className="flex flex-col items-center gap-1 text-slate-300 hover:text-red-500 transition-all active:scale-90 group"
-          >
-            <HiOutlineLogout className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-            <span className="text-[7px] font-black uppercase tracking-widest text-red-500">
-              Exit
-            </span>
-          </button>
+          {/* TOMBOL EXIT UNTUK PEMBINA/ADMIN */}
+          {role !== "anggota" && (
+            <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 p-2 text-slate-500 hover:text-red-500 transition-colors">
+              <HiOutlineLogout size={26} />
+              <span className="text-[8px] font-black uppercase">Exit</span>
+            </button>
+          )}
         </div>
       </div>
-    </nav>
+    </>
   );
 }

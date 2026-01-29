@@ -2,6 +2,16 @@ import React, { useState } from "react";
 import { db, auth } from "../../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+
+// IMPORT REACT ICONS
+import { 
+  HiOutlineShieldCheck, 
+  HiOutlineCamera, 
+  HiOutlineChevronLeft,
+  HiOutlineExclamationCircle,
+  HiOutlineEyeOff
+} from "react-icons/hi";
 
 export default function LaporInsiden() {
   const navigate = useNavigate();
@@ -9,7 +19,7 @@ export default function LaporInsiden() {
     category: "Bullying",
     description: "",
     isAnonymous: false,
-    attachment: null, // Poin 1: Untuk Bukti Foto
+    attachment: null,
   });
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +41,7 @@ export default function LaporInsiden() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (report.description.length < 10) return alert("Mohon berikan deskripsi yang lebih jelas.");
+    if (report.description.length < 10) return alert("Mohon berikan deskripsi yang lebih jelas (Minimal 10 karakter).");
 
     setLoading(true);
     try {
@@ -43,11 +53,11 @@ export default function LaporInsiden() {
         isAnonymous: report.isAnonymous,
         attachment: report.attachment,
         status: "unread",
-        adminReply: "", // Poin 3: Slot untuk tindak lanjut Admin
+        adminReply: "",
         createdAt: serverTimestamp(),
       });
       alert("Laporan Anda telah diterima dengan aman. Tim SFH akan menindaklanjuti segera.");
-      navigate("/anggota"); // Kembali ke dashboard setelah sukses
+      navigate("/anggota");
     } catch (error) {
       alert("Gagal mengirim laporan: " + error.message);
     } finally {
@@ -56,87 +66,130 @@ export default function LaporInsiden() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 italic font-medium">
-      <form 
-        onSubmit={handleSubmit} 
-        className="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl animate-in zoom-in duration-300 border border-slate-100"
-      >
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tighter">Safe From Harm</h2>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Ruang Lapor Aman & Rahasia</p>
-          </div>
-          <img src="https://cdn-icons-png.flaticon.com/128/10629/10629607.png" className="w-8 h-8 opacity-20" alt="sfh" />
-        </div>
-
-        <div className="space-y-4">
-          {/* KATEGORI */}
-          <div>
-            <label className="text-[8px] font-black uppercase ml-2 text-slate-400 tracking-widest">Kategori Insiden</label>
-            <select 
-              value={report.category}
-              onChange={(e) => setReport({...report, category: e.target.value})}
-              className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-xs outline-none border-2 border-transparent focus:border-blue-900 transition-all cursor-pointer">
-              <option value="Bullying">Perundungan (Bullying)</option>
-              <option value="Harassment">Pelecehan</option>
-              <option value="Physical">Kekerasan Fisik</option>
-              <option value="Uncomfortable">Ketidaknyamanan Lingkungan</option>
-              <option value="Other">Lainnya</option>
-            </select>
+    <div className="min-h-screen bg-[#020617] text-slate-100 pb-32 font-sans overflow-x-hidden selection:bg-red-800">
+      <div className="w-full max-w-md mx-auto min-h-screen flex flex-col relative shadow-2xl border-x border-white/5">
+        
+        {/* HEADER AREA */}
+        <div className="bg-gradient-to-br from-red-900 via-[#450a0a] to-[#020617] px-6 pt-12 pb-24 relative overflow-hidden rounded-b-[4rem] shadow-3xl">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute inset-0" style={{ backgroundImage: `radial-gradient(#ffffff 0.5px, transparent 0.5px)`, backgroundSize: '24px 24px' }} />
           </div>
 
-          {/* DESKRIPSI */}
-          <div>
-            <label className="text-[8px] font-black uppercase ml-2 text-slate-400 tracking-widest">Deskripsi Kejadian</label>
-            <textarea 
-              value={report.description}
-              onChange={(e) => setReport({...report, description: e.target.value})}
-              placeholder="Ceritakan secara kronologis..."
-              className="w-full p-5 bg-slate-50 rounded-[2rem] font-bold text-xs outline-none border-2 border-transparent focus:border-blue-900 h-32 transition-all resize-none shadow-inner"
-            />
-          </div>
-
-          {/* UPLOAD FOTO (Poin 1) */}
-          <div>
-            <label className="text-[8px] font-black uppercase ml-2 text-slate-400 tracking-widest">Lampiran Foto Bukti</label>
-            <input 
-              type="file" 
-              accept="image/*"
-              onChange={handleFileChange}
-              className="w-full text-[10px] text-slate-500 font-bold mt-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            />
-          </div>
-
-          {/* ANONIM CHECKBOX */}
-          <label className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl cursor-pointer hover:bg-blue-50 transition-all">
-            <input 
-              type="checkbox"
-              checked={report.isAnonymous}
-              onChange={(e) => setReport({...report, isAnonymous: e.target.checked})}
-              className="w-4 h-4 rounded-full border-slate-300 text-blue-900 focus:ring-blue-900"
-            />
-            <span className="text-[10px] font-black text-blue-900 uppercase">Sembunyikan Nama Saya (Anonim)</span>
-          </label>
-        </div>
-
-        {/* BUTTONS */}
-        <div className="grid grid-cols-2 gap-4 mt-8">
-          <button 
-            type="button" 
-            onClick={() => navigate("/anggota")} 
-            className="py-4 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:text-slate-600 transition-all"
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 bg-white/5 backdrop-blur-xl rounded-xl flex items-center justify-center border border-white/10 active:scale-90 transition z-50 mb-8"
           >
-            Batal
+            <HiOutlineChevronLeft className="w-6 h-6 text-white" />
           </button>
-          <button 
-            type="submit" 
-            disabled={loading} 
-            className="bg-blue-900 text-white py-4 rounded-2xl text-[9px] font-black uppercase shadow-xl shadow-blue-900/20 active:scale-95 transition-all"
-          >
-            {loading ? "Mengirim..." : "Kirim Laporan"}
-          </button>
+
+          <div className="relative z-10">
+            <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none mb-2">
+              SAFE FROM <br /> <span className="text-red-500 tracking-widest text-2xl">HARM (SFH)</span>
+            </h1>
+            <div className="flex items-center gap-2">
+              <div className="h-1 w-12 bg-red-600 rounded-full" />
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
+                Secure & Anonymous Report
+              </p>
+            </div>
+          </div>
+          
+          <HiOutlineShieldCheck className="absolute -bottom-10 -right-10 w-48 h-48 text-white opacity-[0.05] rotate-12" />
         </div>
-      </form>
+
+        {/* FORM AREA */}
+        <div className="px-6 -mt-12 relative z-20">
+          <motion.form 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            onSubmit={handleSubmit}
+            className="bg-slate-900/60 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/10 shadow-3xl space-y-6"
+          >
+            {/* KATEGORI */}
+            <div>
+              <label className="text-[10px] font-black uppercase ml-2 text-slate-500 tracking-[0.2em] flex items-center gap-2 mb-3">
+                <HiOutlineExclamationCircle className="text-red-500" /> Kategori Insiden
+              </label>
+              <select 
+                value={report.category}
+                onChange={(e) => setReport({...report, category: e.target.value})}
+                className="w-full p-4 bg-white/5 rounded-2xl font-bold text-xs outline-none border border-white/5 focus:border-red-600 transition-all text-white appearance-none cursor-pointer">
+                <option className="bg-slate-900" value="Bullying">Perundungan (Bullying)</option>
+                <option className="bg-slate-900" value="Harassment">Pelecehan</option>
+                <option className="bg-slate-900" value="Physical">Kekerasan Fisik</option>
+                <option className="bg-slate-900" value="Uncomfortable">Ketidaknyamanan Lingkungan</option>
+                <option className="bg-slate-900" value="Other">Lainnya</option>
+              </select>
+            </div>
+
+            {/* DESKRIPSI */}
+            <div>
+              <label className="text-[10px] font-black uppercase ml-2 text-slate-500 tracking-[0.2em] mb-3 block">Deskripsi Kejadian</label>
+              <textarea 
+                value={report.description}
+                onChange={(e) => setReport({...report, description: e.target.value})}
+                placeholder="Ceritakan secara kronologis untuk memudahkan investigasi..."
+                className="w-full p-5 bg-white/5 rounded-[2rem] font-bold text-xs outline-none border border-white/5 focus:border-red-600 h-40 transition-all resize-none shadow-inner text-white placeholder:text-slate-600"
+              />
+            </div>
+
+            {/* UPLOAD FOTO */}
+            <div className="relative">
+              <label className="text-[10px] font-black uppercase ml-2 text-slate-500 tracking-[0.2em] mb-3 flex items-center gap-2">
+                <HiOutlineCamera /> Lampiran Bukti (Opsional)
+              </label>
+              <div className="relative group">
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <div className={`w-full p-4 bg-white/5 border-2 border-dashed rounded-2xl flex items-center justify-center transition-all ${report.attachment ? 'border-red-600 bg-red-600/5' : 'border-white/10 group-hover:border-white/20'}`}>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    {report.attachment ? "Foto Berhasil Terlampir ✅" : "Pilih File atau Ambil Foto"}
+                  </span>
+                </div>
+              </div>
+              <p className="text-[8px] text-slate-600 mt-2 ml-2 italic">*Maksimal ukuran file 1MB</p>
+            </div>
+
+            {/* ANONIM TOGGLE */}
+            <label className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border ${report.isAnonymous ? 'bg-red-600/10 border-red-600/30' : 'bg-white/5 border-white/5'}`}>
+              <div className="flex items-center gap-3">
+                <HiOutlineEyeOff className={report.isAnonymous ? "text-red-500" : "text-slate-500"} />
+                <span className={`text-[10px] font-black uppercase tracking-tighter ${report.isAnonymous ? 'text-white' : 'text-slate-500'}`}>
+                  Sembunyikan Identitas (Anonim)
+                </span>
+              </div>
+              <input 
+                type="checkbox"
+                checked={report.isAnonymous}
+                onChange={(e) => setReport({...report, isAnonymous: e.target.checked})}
+                className="w-5 h-5 rounded-full accent-red-600"
+              />
+            </label>
+
+            {/* ACTION BUTTON */}
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full bg-gradient-to-r from-red-600 to-red-900 text-white py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-all disabled:opacity-50"
+            >
+              {loading ? "Enkripsi Laporan..." : "Kirim Laporan Rahasia"}
+            </button>
+          </motion.form>
+        </div>
+
+        {/* FOOTER */}
+        <div className="px-8 py-16 text-center border-t border-white/5 mt-auto">
+          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest leading-loose italic">
+            Safe From Harm — Laskar Bahari Security <br />
+            Privasi Anda adalah Prioritas Kami <br />
+            © 2026 — SMPN 1 Biau
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
