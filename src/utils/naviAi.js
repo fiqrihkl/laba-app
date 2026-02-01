@@ -6,8 +6,10 @@
 
 import { InferenceClient } from "@huggingface/inference";
 
-const HF_TOKEN = "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";
+// Ambil token dari environment variable, bukan hardcoded
+const HF_TOKEN = import.meta.env.VITE_HF_TOKEN; 
 const client = new InferenceClient(HF_TOKEN);
+
 const MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"; 
 
 export const getNaviResponse = async (context, history, userMessage, isShort = false) => {
