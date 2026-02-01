@@ -54,7 +54,6 @@ function Profile() {
     agama: "",
     tempat_lahir: "",
     tanggal_lahir: "",
-    jenisKelamin: "",
   });
 
   const pageTransition = {
@@ -89,7 +88,6 @@ function Profile() {
             agama: data.agama || "",
             tempat_lahir: data.tempat_lahir || "",
             tanggal_lahir: data.tanggal_lahir || "",
-            jenisKelamin: data.jenisKelamin || "",
           });
         }
         setLoading(false);
@@ -258,18 +256,6 @@ function Profile() {
                     <label className="text-[9px] font-black text-slate-500 uppercase ml-2 tracking-[0.2em] group-focus-within:text-red-500 transition-colors">Nama Lengkap</label>
                     <input type="text" value={formData.nama} onChange={(e) => setFormData({ ...formData, nama: e.target.value })} className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 mt-1 font-bold text-white outline-none focus:border-red-600 transition-all uppercase" />
                   </div>
-                  
-                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase ml-2 tracking-[0.2em] mb-2 block">Jenis Kelamin</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {["Putra", "Putri"].map((gender) => (
-                        <button key={gender} type="button" onClick={() => setFormData({...formData, jenisKelamin: gender})} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all border ${formData.jenisKelamin === gender ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-600/20" : "bg-white/5 border-white/5 text-slate-400"}`}>
-                          {gender}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[9px] font-black text-slate-500 uppercase ml-2 tracking-[0.2em]">Tempat Lahir</label>

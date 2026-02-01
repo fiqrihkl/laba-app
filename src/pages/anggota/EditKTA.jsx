@@ -1,204 +1,160 @@
-import React, { useState, useEffect } from "react";
-import { db, storage, auth } from "../../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { useNavigate } from "react-router-dom";
-import { HiOutlineChevronLeft, HiOutlineCamera, HiOutlineSave } from "react-icons/hi";
+import React, { useRef } from "react";
+import { HiOutlineCamera, HiOutlineInformationCircle } from "react-icons/hi";
+import { motion } from "framer-motion";
 
-export default function ProfileEdit() {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    nama: "",
-    nta: "",
-    tempat_lahir: "",
-    tanggal_lahir: "",
-    jenis_kelamin: "Laki-laki",
-    agama: "Islam",
-    jabatan: "",
-    kwarran: "",
-    kwarcab: "",
-    ktaPhotoURL: ""
-  });
-
-  const [imageFile, setImageFile] = useState(null);
-  const [previewURL, setPreviewURL] = useState(null);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const user = auth.currentUser;
-        if (!user) {
-          navigate("/login");
-          return;
-        }
-
-        const snap = await getDoc(doc(db, "users", user.uid));
-        if (snap.exists()) {
-          const data = snap.data();
-          setFormData(data);
-          setPreviewURL(data.ktaPhotoURL);
-        }
-      } catch (error) {
-        console.error("Error fetching user:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserData();
-  }, [navigate]);
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setPreviewURL(URL.createObjectURL(file));
-    }
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-
-    try {
-      const user = auth.currentUser;
-      let photoURL = formData.ktaPhotoURL;
-
-      // 1. Upload foto jika ada perubahan
-      if (imageFile) {
-        const storageRef = ref(storage, `kta_photos/${user.uid}`);
-        const uploadTask = await uploadBytes(storageRef, imageFile);
-        photoURL = await getDownloadURL(uploadTask.ref);
-      }
-
-      // 2. Update Firestore
-      const finalData = { ...formData, ktaPhotoURL: photoURL };
-      await updateDoc(doc(db, "users", user.uid), finalData);
-
-      alert("Profil berhasil diperbarui!");
-      navigate("/anggota"); // Kembali ke dashboard anggota
-    } catch (error) {
-      console.error("Gagal menyimpan:", error);
-      alert("Terjadi kesalahan saat menyimpan data.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 italic animate-pulse">
-      Memuat Data Profil...
-    </div>
-  );
+export default function EditKTA({ editForm, setEditForm, onPhotoChange, photoPreview, isSaving, onSubmit }) {
+  const fileInputRef = useRef(null);
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-8 italic">
-      <div className="max-w-2xl mx-auto bg-white rounded-[2.5rem] shadow-xl overflow-hidden border border-slate-200">
-        
-        {/* Header */}
-        <div className="p-8 bg-blue-900 text-white flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/10 rounded-full transition-all">
-            <HiOutlineChevronLeft size={24} />
+    <motion.div 
+      initial={{ opacity: 0, x: -50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+      className="w-full lg:w-[450px] shrink-0 bg-slate-900/80 border border-white/10 rounded-[3rem] p-8 shadow-3xl backdrop-blur-3xl mb-10 lg:mb-0"
+    >
+      <form onSubmit={onSubmit} className="space-y-5 text-[11px] font-semibold">
+        {/* INFO HEADER */}
+        <div className="px-2 border-l-4 border-red-600">
+          <p className="text-red-500 uppercase tracking-[0.2em] text-[9px] font-bold">Official Update</p>
+          <h3 className="text-white text-lg uppercase tracking-tight font-bold">Penyuntingan Identitas</h3>
+        </div>
+
+        {/* UPDATE FOTO DENGAN PREVIEW */}
+        <div className="bg-white/5 p-6 rounded-3xl border-2 border-dashed border-white/10 text-center hover:border-red-500/40 transition-all group relative overflow-hidden">
+          {photoPreview && (
+            <div className="absolute inset-0 opacity-30">
+              <img src={photoPreview} alt="prev" className="w-full h-full object-cover blur-[2px]" />
+            </div>
+          )}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept="image/*" 
+            onChange={onPhotoChange} 
+          />
+          <button 
+            type="button" 
+            disabled={isSaving}
+            onClick={() => fileInputRef.current.click()} 
+            className="relative z-10 flex flex-col items-center gap-2 mx-auto text-red-500 hover:text-red-400 transition-colors"
+          >
+            <div className="w-14 h-14 bg-slate-900/50 rounded-2xl flex items-center justify-center border border-white/10 shadow-xl">
+              <HiOutlineCamera size={28} className="group-hover:scale-110 transition-transform" />
+            </div>
+            <span className="tracking-widest uppercase font-bold text-[9px]">Ganti Pas Foto</span>
           </button>
-          <div>
-            <h1 className="font-black uppercase text-lg tracking-tighter">Edit Data Identitas</h1>
-            <p className="text-blue-300 text-[10px] font-bold uppercase tracking-widest">Laskar Bahari System</p>
+        </div>
+
+        {/* INFO KETENTUAN FOTO */}
+        <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl flex gap-3">
+          <HiOutlineInformationCircle className="text-blue-500 shrink-0" size={18} />
+          <div className="text-[9px] text-slate-300 leading-relaxed uppercase tracking-wider">
+            <span className="text-blue-400 font-bold block mb-1">Ketentuan Pas Foto:</span>
+            Rasio 2:3 atau 3:4, Seragam Pramuka Lengkap, Latar Belakang Merah (Formal).
           </div>
         </div>
 
-        <form onSubmit={handleSave} className="p-8 space-y-6">
-          
-          {/* Foto Profil Section */}
-          <div className="flex flex-col items-center mb-8">
-            <div className="relative group">
-              <div className="w-32 h-40 bg-slate-200 rounded-2xl overflow-hidden border-4 border-slate-100 shadow-inner">
-                {previewURL ? (
-                  <img src={previewURL} alt="Preview" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-400">FOTO</div>
-                )}
-              </div>
-              <label className="absolute bottom-2 right-2 bg-blue-600 p-2 rounded-xl text-white cursor-pointer hover:scale-110 transition-all shadow-lg">
-                <HiOutlineCamera size={20} />
-                <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
-              </label>
-            </div>
-            <p className="text-[9px] text-slate-400 mt-3 uppercase font-bold tracking-widest text-center">
-              Gunakan foto berseragam pramuka <br/> latar belakang merah
-            </p>
+        {/* INPUT NAMA LENGKAP */}
+        <div className="space-y-2">
+          <label className="text-slate-500 ml-2 uppercase tracking-widest font-bold">Nama Lengkap (Sesuai Ijazah)</label>
+          <input 
+            type="text" 
+            required
+            className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl text-white outline-none focus:border-red-600 transition-all uppercase placeholder:text-slate-700 font-bold" 
+            value={editForm.nama || ""} 
+            onChange={(e) => setEditForm({...editForm, nama: e.target.value})} 
+          />
+        </div>
+
+        {/* TTL SECTION */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-slate-500 ml-2 uppercase tracking-widest font-bold">Kota Lahir</label>
+            <input 
+              type="text" 
+              className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl text-white outline-none focus:border-red-600 uppercase font-bold" 
+              value={editForm.tempat_lahir || ""} 
+              onChange={(e) => setEditForm({...editForm, tempat_lahir: e.target.value})}
+            />
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Input Nama */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nama Lengkap</label>
-              <input 
-                type="text" name="nama" value={formData.nama} onChange={handleChange} required
-                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-xs font-bold outline-none focus:border-blue-500 transition-all"
-              />
-            </div>
-
-            {/* Input NTA */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2">NTA (Nomor Tanda Anggota)</label>
-              <input 
-                type="text" name="nta" value={formData.nta} onChange={handleChange} placeholder="10.491.XXX.XXX"
-                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-xs font-bold outline-none focus:border-blue-500 transition-all"
-              />
-            </div>
-
-            {/* Tempat Lahir */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Tempat Lahir</label>
-              <input 
-                type="text" name="tempat_lahir" value={formData.tempat_lahir} onChange={handleChange}
-                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-xs font-bold outline-none focus:border-blue-500 transition-all"
-              />
-            </div>
-
-            {/* Tanggal Lahir */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Tanggal Lahir</label>
-              <input 
-                type="text" name="tanggal_lahir" value={formData.tanggal_lahir} onChange={handleChange} placeholder="01 Januari 2010"
-                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-xs font-bold outline-none focus:border-blue-500 transition-all"
-              />
-            </div>
-
-            {/* Jabatan */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Jabatan</label>
-              <input 
-                type="text" name="jabatan" value={formData.jabatan} onChange={handleChange} placeholder="Anggota Penggalang"
-                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-xs font-bold outline-none focus:border-blue-500 transition-all"
-              />
-            </div>
-
-            {/* Kwarran */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Kwarran (Kecamatan)</label>
-              <input 
-                type="text" name="kwarran" value={formData.kwarran} onChange={handleChange}
-                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-xs font-bold outline-none focus:border-blue-500 transition-all"
-              />
-            </div>
+          <div className="space-y-2 font-sans">
+            <label className="text-slate-500 ml-2 uppercase tracking-widest font-bold">Tgl Lahir</label>
+            <input 
+              type="date" 
+              className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl text-white outline-none focus:border-red-600 font-bold appearance-none" 
+              value={editForm.tanggal_lahir || ""} 
+              onChange={(e) => setEditForm({...editForm, tanggal_lahir: e.target.value})}
+            />
           </div>
+        </div>
 
-          <button 
-            type="submit" disabled={saving}
-            className={`w-full ${saving ? 'bg-slate-400' : 'bg-blue-900 hover:bg-slate-800'} text-white py-5 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-3 shadow-xl transition-all active:scale-95 mt-8`}
-          >
-            <HiOutlineSave size={20} />
-            {saving ? "Menyimpan Data..." : "Simpan Perubahan"}
-          </button>
-        </form>
-      </div>
-    </div>
+        {/* AGAMA & JABATAN */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-slate-500 ml-2 uppercase tracking-widest font-bold">Agama</label>
+            <input 
+              type="text" 
+              className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl text-white outline-none focus:border-red-600 uppercase font-bold" 
+              value={editForm.agama || ""} 
+              onChange={(e) => setEditForm({...editForm, agama: e.target.value})}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-slate-500 ml-2 uppercase tracking-widest font-bold">Jabatan</label>
+            <input 
+              type="text" 
+              className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl text-white outline-none focus:border-red-600 uppercase font-bold" 
+              value={editForm.jabatan || ""} 
+              onChange={(e) => setEditForm({...editForm, jabatan: e.target.value})}
+            />
+          </div>
+        </div>
+
+        {/* KWARRAN & KWARCAB */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-slate-500 ml-2 uppercase tracking-widest font-bold">Kwarran</label>
+            <input 
+              type="text" 
+              className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl text-white outline-none focus:border-red-600 uppercase font-bold" 
+              value={editForm.kwarran || ""} 
+              onChange={(e) => setEditForm({...editForm, kwarran: e.target.value})}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-slate-500 ml-2 uppercase tracking-widest font-bold">Kwarcab</label>
+            <input 
+              type="text" 
+              className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl text-white outline-none focus:border-red-600 uppercase font-bold" 
+              value={editForm.kwarcab || ""} 
+              onChange={(e) => setEditForm({...editForm, kwarcab: e.target.value})}
+            />
+          </div>
+        </div>
+
+        {/* TINGKATAN (READ ONLY / INFO) */}
+        <div className="space-y-2 opacity-60">
+          <label className="text-slate-500 ml-2 uppercase tracking-widest font-bold italic">Tingkatan SKU (Sistem Validasi)</label>
+          <div className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl text-slate-400 font-bold uppercase cursor-not-allowed">
+            {editForm.tingkat || "-"}
+          </div>
+        </div>
+
+        {/* TOMBOL AKSI */}
+        <button 
+          type="submit" 
+          disabled={isSaving} 
+          className="w-full bg-gradient-to-r from-red-600 to-red-800 text-white py-5 rounded-2xl mt-4 shadow-xl active:scale-95 transition-all font-bold uppercase tracking-[0.2em] disabled:opacity-50 disabled:cursor-wait"
+        >
+          {isSaving ? (
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              <span>Sinkronisasi Data...</span>
+            </div>
+          ) : "Simpan Perubahan"}
+        </button>
+      </form>
+    </motion.div>
   );
 }

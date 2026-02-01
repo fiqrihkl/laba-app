@@ -33,6 +33,7 @@ import Announcements from "./pages/anggota/Announcements";
 import DaftarSKU from "./pages/anggota/DaftarSKU";
 import RiwayatStatus from "./pages/anggota/RiwayatStatus";
 import LaporInsiden from "./pages/anggota/LaporInsiden";
+import NaviChat from "./pages/anggota/NaviChat";
 
 // Pembina
 import PembinaDashboard from "./pages/pembina/PembinaDashboard";
@@ -126,6 +127,7 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
         <Route path="/laporan" element={user ? <Laporan /> : <Navigate to="/" replace />} />
         <Route path="/leaderboard" element={user ? <Leaderboard /> : <Navigate to="/" replace />} />
         <Route path="/announcements" element={user && role === "anggota" ? <Announcements /> : <Navigate to="/" replace />} />
+        <Route path="/navi-chat" element={<NaviChat />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

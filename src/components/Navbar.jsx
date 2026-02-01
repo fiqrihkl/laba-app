@@ -155,7 +155,7 @@ export default function Navbar({ role, userData }) {
                       className={`w-20 h-20 bg-gradient-to-b rounded-full flex flex-col items-center justify-center text-white shadow-2xl border-[6px] border-[#020617] transition-all duration-300 ${showSfhMenu ? 'from-orange-500 to-orange-700 rotate-180' : 'from-red-600 to-red-900'}`}
                     >
                       <HiOutlineShieldCheck size={36} />
-                      <span className="text-[8px] font-black mt-1 uppercase">Secure</span>
+                      <span className="text-[8px] font-black mt-1 uppercase">SFH</span>
                     </motion.button>
                   </div>
                 </div>
