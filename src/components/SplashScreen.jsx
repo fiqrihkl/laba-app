@@ -39,11 +39,11 @@ export default function SplashScreen() {
           className="text-center"
         >
           <h1 className="text-5xl font-black text-white tracking-tighter uppercase leading-none italic">
-            LABA <span className="text-red-600">APP</span>
+            NAVIGASI <span className="text-red-600">APP</span>
           </h1>
           
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mt-3">
-            LAskar BAhari Application
+            Navigator Digital Laskar Bahari
           </p>
 
           <div className="flex items-center justify-center gap-2 mt-6">
@@ -71,7 +71,7 @@ export default function SplashScreen() {
       {/* 👤 Footer Security Credits */}
       <div className="absolute bottom-10 text-center px-6">
         <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.5em] leading-relaxed italic">
-          Authorized System by <span className="text-slate-400">Fiqri Haikal</span>
+          Developed by <span className="text-slate-400">Fiqri Haikal</span>
         </p>
         <p className="text-[7px] font-bold text-slate-800 uppercase tracking-[0.3em] mt-1">
           Secure Core v4.0 — SMPN 1 Biau

@@ -52,7 +52,7 @@ export default function Login({ installPrompt }) {
     } else {
       showModal(
         "Panduan Instalasi",
-        "Untuk pengguna iPhone/Safari: Klik ikon 'Share' (panah ke atas) lalu pilih 'Add to Home Screen' untuk memasang LABA APP.",
+        "Untuk pengguna iPhone/Safari: Klik ikon 'Share' (panah ke atas) lalu pilih 'Add to Home Screen' untuk memasang NAVIGASI APP.",
         "info"
       );
     }
@@ -110,10 +110,10 @@ export default function Login({ installPrompt }) {
               <img src="/logo/logo.png" className="w-16 h-16 object-contain drop-shadow-2xl" alt="Logo" />
             </motion.div>
             <h1 className="text-5xl font-black text-white tracking-tighter uppercase leading-none italic">
-              LABA <span className="text-red-600 underline decoration-white/10">APP</span>
+              NAVIGASI <span className="text-red-600 underline decoration-white/10">APP</span>
             </h1>
             <div className="flex items-center gap-3 mt-4 text-slate-500">
-                <p className="text-[10px] font-black uppercase tracking-[0.4em]">Laskar Bahari Application</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.4em]">Navigator Digital Laskar Bahari</p>
             </div>
         </div>
 
@@ -166,21 +166,18 @@ export default function Login({ installPrompt }) {
               </button>
             </form>
 
-            <div className="mt-10 space-y-4">
+{/* ACTIVATION LINK */}
+              <div className="text-center pt-4">
+                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3 italic">Belum punya akun? Aktivasi disini</p>
+                <Link to="/aktivasi" className="inline-flex items-center gap-2 text-red-500 hover:text-red-400 transition-all group font-black text-[11px] uppercase tracking-widest">
+                  <HiOutlineUserAdd size={18} />
+                  Aktivasi Akun
+                  <HiOutlineArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            <div className="mt-1 space-y-4">
               {/* ✨ PREMIUM PWA HUB */}
               <div className="bg-white/5 rounded-3xl p-5 border border-white/5 group transition-all hover:bg-white/10">
-                <div className="flex items-center justify-between mb-4 px-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center border border-red-600/20">
-                      <HiOutlineDeviceMobile size={20} className="text-red-500 animate-pulse" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-white uppercase tracking-widest leading-none">PWA Version</p>
-                      <p className="text-[8px] text-slate-500 font-bold uppercase mt-1">Faster. Stable. Offline.</p>
-                    </div>
-                  </div>
-                  <HiOutlineInformationCircle size={18} className="text-slate-700" />
-                </div>
                 <button 
                   onClick={handleInstallApp}
                   className="w-full bg-white text-[#020617] py-4 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl shadow-black/20"
@@ -190,15 +187,7 @@ export default function Login({ installPrompt }) {
                 </button>
               </div>
 
-              {/* ACTIVATION LINK */}
-              <div className="text-center pt-4">
-                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3 italic">Belum punya akun? Aktivasi disini</p>
-                <Link to="/aktivasi" className="inline-flex items-center gap-2 text-red-500 hover:text-red-400 transition-all group font-black text-[11px] uppercase tracking-widest">
-                  <HiOutlineUserAdd size={18} />
-                  Aktivasi Akun
-                  <HiOutlineArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </div>
+              
             </div>
           </div>
         </div>

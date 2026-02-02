@@ -235,7 +235,7 @@ export default function Leaderboard() {
         {/* FOOTER */}
         <div className="px-8 py-12 text-center border-t border-white/5 mt-auto bg-slate-950/50">
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest leading-loose italic">
-            Developed by <span className="text-red-600">Fiqri Haikal</span> — LABA APP v1.0<br />
+            Developed by <span className="text-red-600">Fiqri Haikal</span> — NAVIGASI APP v1.2<br />
             Radar Active • Hall of Fame Edition<br />
             © 2026 — SMPN 1 Biau
           </p>

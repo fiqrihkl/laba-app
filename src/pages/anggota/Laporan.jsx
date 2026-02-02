@@ -196,7 +196,7 @@ function Laporan() {
           {/* FOOTER IDENTITAS DEVELOPER */}
         <div className="px-8 py-10 text-center border-t border-slate-50 mt-auto">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-loose italic">
-            Dikembangkan oleh <span className="text-blue-600">Fiqri Haikal</span> — LABA APP v1.0<br />
+            Dikembangkan oleh <span className="text-blue-600">Fiqri Haikal</span> — NAVIGASI APP v1.2<br />
             Level Up Your Scout Adventure!<br />
             © 2026 — Laskar Bahari SMPN 1 Biau
           </p>
