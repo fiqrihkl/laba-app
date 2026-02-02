@@ -28,7 +28,10 @@ export default function Navbar({ role, userData }) {
   const [showSosModal, setShowSosModal] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  // Reset error state jika photoURL berubah (misal setelah user upload foto baru)
+  // LOGIKA PENTING: Sembunyikan Navbar jika di halaman chat agar tidak menutupi input
+  const isChatPage = location.pathname === "/navi-chat";
+
+  // Reset error state jika photoURL berubah
   useEffect(() => {
     setImgError(false);
   }, [userData?.photoURL]);
@@ -39,6 +42,8 @@ export default function Navbar({ role, userData }) {
       navigate("/");
     }
   };
+
+  if (isChatPage) return null; // Navbar tidak akan dirender di halaman chat
 
   const menuConfig = {
     admin: [
@@ -162,7 +167,7 @@ export default function Navbar({ role, userData }) {
               );
             }
 
-            // --- LOGIKA AVATAR PROFIL (INISIAL FALLBACK) ---
+            // --- LOGIKA AVATAR PROFIL ---
             if (item.isAvatar) {
               return (
                 <Link key={item.path} to={item.path} className="flex flex-col items-center gap-1 p-2">
@@ -198,7 +203,6 @@ export default function Navbar({ role, userData }) {
             );
           })}
 
-          {/* TOMBOL EXIT UNTUK PEMBINA/ADMIN */}
           {role !== "anggota" && (
             <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 p-2 text-slate-500 hover:text-red-500 transition-colors">
               <HiOutlineLogout size={26} />

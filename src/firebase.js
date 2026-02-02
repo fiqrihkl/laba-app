@@ -1,22 +1,22 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth"; 
 import { getFirestore } from "firebase/firestore"; 
-import { getStorage } from "firebase/storage"; // 1. Tambahkan import Storage
+import { getStorage } from "firebase/storage"; 
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB5sjUSKCuno_vYp_PlX0nMotub0cGOXoc",
-  authDomain: "pramuka-digital-app.firebaseapp.com",
-  projectId: "pramuka-digital-app",
-  storageBucket: "pramuka-digital-app.firebasestorage.app",
-  messagingSenderId: "315546220759",
-  appId: "1:315546220759:web:ba35bc4a519a86cb889892",
-  measurementId: "G-Q8RGWCC6VT",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Ekspor layanan agar bisa dipanggil di file lain
+// Ekspor layanan
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app); // 2. Ekspor layanan Storage
+export const storage = getStorage(app);
