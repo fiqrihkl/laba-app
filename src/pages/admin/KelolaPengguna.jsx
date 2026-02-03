@@ -55,44 +55,48 @@ export default function KelolaPengguna() {
   }, []);
 
   const handleAddUser = async (e) => {
-    e.preventDefault();
-    if (!newUserName || !newUserNTA) return alert("Nama dan NTA wajib diisi!");
+  e.preventDefault();
+  if (!newUserName || !newUserNTA) return alert("Nama dan NTA wajib diisi!");
 
-    const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    try {
-      const userRef = doc(db, "users", activationCode);
-      const userData = {
-        nama: newUserName.trim(),
-        nta: newUserNTA.trim(),
-        role: newUserRole,
-        jenisKelamin: newUserGender,
-        points: 0,
-        level: 1,
-        isClaimed: false,
-        ktaStatus: "belum_lengkap",
-        ktaPhotoURL: "",
-        agama: "",
-        tempat_lahir: "",
-        tanggal_lahir: "",
-        jabatan: newUserRole === "pembina" ? "Pembina Gudep" : "Anggota Laskar",
-        tingkat: newUserRole === "pembina" ? "Pembina Dewasa" : "Calon Anggota",
-        kwarran: "Biau",
-        kwarcab: "Buol",
-        createdAt: new Date().toISOString(),
-      };
+  try {
+    const userRef = doc(db, "users", activationCode);
+    const userData = {
+      nama: newUserName.trim(),
+      nta: newUserNTA.trim(),
+      role: newUserRole,
+      jenisKelamin: newUserGender,
+      points: 0,
+      level: 1,
+      isClaimed: false,
+      ktaStatus: "belum_lengkap",
+      ktaPhotoURL: "",
+      agama: "",
+      tempat_lahir: "",
+      tanggal_lahir: "",
+      jabatan: newUserRole === "pembina" ? "Pembina Gudep" : "Anggota Laskar",
+      
+      // PERUBAHAN DI SINI:
+      // Jika role pembina -> Pembina Dewasa, jika bukan (anggota) -> PENGGALANG
+      tingkat: newUserRole === "pembina" ? "Pembina Dewasa" : "PENGGALANG",
+      
+      kwarran: "Biau",
+      kwarcab: "Buol",
+      createdAt: new Date().toISOString(),
+    };
 
-      await setDoc(userRef, userData);
+    await setDoc(userRef, userData);
 
-      setGeneratedCode(activationCode);
-      setShowAddModal(false);
-      setShowResultModal(true);
+    setGeneratedCode(activationCode);
+    setShowAddModal(false);
+    setShowResultModal(true);
 
-    } catch (error) {
-      console.error("Firebase Error:", error);
-      alert("Gagal menyimpan ke database.");
-    }
-  };
+  } catch (error) {
+    console.error("Firebase Error:", error);
+    alert("Gagal menyimpan ke database.");
+  }
+};
 
   // FUNGSI SALIN KODE
   const copyToClipboard = async () => {

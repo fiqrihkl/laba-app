@@ -87,7 +87,7 @@ export const ModalProvider = ({ children }) => {
                   onClick={() => { if(modal.onConfirm) modal.onConfirm(); closeModal(); }}
                   className={`w-full py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl transition-all active:scale-95 text-white ${theme.btn} shadow-black/20`}
                 >
-                  {modal.onConfirm ? "Execute Order" : "Understood"}
+                  {modal.onConfirm ? "Execute Order" : "MENGERTI"}
                 </button>
                 
                 {modal.onConfirm && (

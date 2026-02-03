@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "../../context/ModalContext";
 import { QRCodeCanvas } from "qrcode.react";
+import ScoutAttendanceLogs from "./ScoutAttendanceLogs";
 
 // IMPORT REACT ICONS
 import { 
@@ -346,7 +347,10 @@ function Profile() {
                   </p>
                 </div>
 
-                {/* ACHIEVEMENT VAULT (KUMPULAN PIAGAM) */}
+                {/* REKAP ABSENSI OTOMATIS */}
+                <ScoutAttendanceLogs attendanceLog={userData?.attendanceLog} />
+
+                {/* ACHIEVEMENT VAULT (KUMPULAN PIAGAM TER-UPDATE) */}
                 <div className="bg-slate-900/60 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/10 shadow-3xl relative overflow-hidden mt-6">
                   <div className="flex items-center justify-between mb-8">
                     <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] italic">Achievement Vault</h3>
@@ -354,35 +358,31 @@ function Profile() {
                   </div>
 
                   <div className="space-y-4">
-                    {userData?.certificates && userData.certificates.length > 0 ? (
-                      userData.certificates.map((cert, idx) => (
-                        <motion.div 
-                          key={cert.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                          className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center justify-between group hover:border-red-500/30 transition-all cursor-pointer"
-                          onClick={() => navigate(`/cetak-piagam/${cert.id}`, { state: { cert, userData } })}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center text-red-500 border border-red-500/20 shadow-lg">
-                              <MdVerified size={20} />
+                    {userData?.claimedBadges && Object.keys(userData.claimedBadges).length > 0 ? (
+                      Object.entries(userData.claimedBadges).map(([key, badge], idx) => (
+                        badge.tier === "GOLD" && ( // Hanya tampilkan yang sudah GOLD/Piagam
+                          <motion.div 
+                            key={key}
+                            onClick={() => navigate(`/print-piagam/${key}`)}
+                            className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center justify-between group hover:border-red-500/30 transition-all cursor-pointer"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center text-yellow-500 border border-yellow-500/20 shadow-lg">
+                                <MdVerified size={20} />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-black text-white uppercase italic tracking-tighter">GOLD MASTER: {key}</p>
+                                <p className="text-[7px] text-slate-500 uppercase tracking-widest font-black">Tingkat {badge.level} • {new Date(badge.claimedAt).toLocaleDateString()}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-[10px] font-black text-white uppercase italic tracking-tighter">{cert.stageName}</p>
-                              <p className="text-[7px] text-slate-500 uppercase tracking-widest font-black">Lvl {cert.levelReached} • {new Date(cert.dateAwarded).toLocaleDateString()}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center text-white hover:bg-red-600 transition-all shadow-lg active:scale-90">
-                            <MdQrCodeScanner size={16} />
-                          </div>
-                        </motion.div>
+                            <MdQrCodeScanner className="text-white opacity-40" size={16} />
+                          </motion.div>
+                        )
                       ))
                     ) : (
                       <div className="text-center py-10 opacity-30">
                         <MdEmojiEvents size={40} className="mx-auto mb-2 text-slate-700" />
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Belum ada piagam yang terbuka.</p>
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Selesaikan SKU Gold untuk membuka Piagam.</p>
                       </div>
                     )}
                   </div>

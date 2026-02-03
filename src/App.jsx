@@ -34,6 +34,7 @@ import DaftarSKU from "./pages/anggota/DaftarSKU";
 import RiwayatStatus from "./pages/anggota/RiwayatStatus";
 import LaporInsiden from "./pages/anggota/LaporInsiden";
 import NaviChat from "./pages/anggota/NaviChat";
+import PrintPiagam from "./pages/anggota/PrintPiagam";
 
 // Pembina
 import PembinaDashboard from "./pages/pembina/PembinaDashboard";
@@ -128,6 +129,9 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
         <Route path="/leaderboard" element={user ? <Leaderboard /> : <Navigate to="/" replace />} />
         <Route path="/announcements" element={user && role === "anggota" ? <Announcements /> : <Navigate to="/" replace />} />
         <Route path="/navi-chat" element={<NaviChat />} />
+        
+        {/* RUTE BARU: PRINT PIAGAM */}
+        <Route path="/print-piagam/:badgeKey" element={user && role === "anggota" ? <PrintPiagam /> : <Navigate to="/" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -11,7 +11,7 @@ import {
   doc,
   serverTimestamp,
 } from "firebase/firestore";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 
 // IMPORT REACT ICONS
@@ -21,7 +21,9 @@ import {
   MdPlaylistAdd, 
   MdAutoGraph, 
   MdLayers,
-  MdDescription 
+  MdDescription,
+  MdStarOutline,
+  MdOutlinePlace
 } from "react-icons/md";
 
 export default function KelolaMasterSKU() {
@@ -29,6 +31,8 @@ export default function KelolaMasterSKU() {
   const [tingkat, setTingkat] = useState("Ramu");
   const [nomor, setNomor] = useState("");
   const [deskripsi, setDeskripsi] = useState("");
+  const [kategori, setKategori] = useState("SPIRITUAL"); 
+  const [subAgama, setSubAgama] = useState(""); // STATE BARU UNTUK POIN 4
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [user, setUser] = useState(null);
@@ -73,26 +77,35 @@ export default function KelolaMasterSKU() {
 
     setIsSubmitting(true);
     try {
-      // Simpan ke Master SKU
-      await addDoc(collection(db, "master_sku"), {
+      // Objek data yang akan disimpan
+      const skuData = {
         tingkat: tingkat,
         nomor: Number(nomor),
         deskripsi: deskripsi.trim(),
+        kategori: kategori,
         admin_uid: user.uid,
         createdAt: serverTimestamp(),
-      });
+      };
+
+      // Tambahkan subAgama hanya jika nomor poin adalah 4
+      if (Number(nomor) === 4) {
+        skuData.sub_agama = subAgama;
+      }
+
+      await addDoc(collection(db, "master_sku"), skuData);
 
       // AUTO-LOGGING (Audit Trail)
       await addDoc(collection(db, "logs"), {
         action: "Tambah Master SKU",
         adminName: user.displayName || "Admin",
-        targetName: `SKU ${tingkat} No. ${nomor}`,
+        targetName: `SKU ${tingkat} No. ${nomor} ${Number(nomor) === 4 ? `(${subAgama})` : ""}`,
         reason: deskripsi.substring(0, 50) + "...",
         timestamp: serverTimestamp(),
       });
 
       setNomor("");
       setDeskripsi("");
+      setSubAgama("");
       alert("Butir SKU berhasil ditambahkan!");
     } catch (error) {
       console.error("Gagal menyimpan:", error);
@@ -108,7 +121,6 @@ export default function KelolaMasterSKU() {
       try {
         await deleteDoc(doc(db, "master_sku", item.id));
 
-        // AUTO-LOGGING (Audit Trail)
         await addDoc(collection(db, "logs"), {
           action: "Hapus Master SKU",
           adminName: user?.displayName || "Admin",
@@ -176,6 +188,48 @@ export default function KelolaMasterSKU() {
               </div>
             </div>
 
+            {/* BARIS KATEGORI & SUB-AGAMA (KONDISIONAL) */}
+            <div className={`grid ${Number(nomor) === 4 ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase text-slate-400 ml-2 flex items-center gap-1">
+                  <MdStarOutline /> Kategori
+                </label>
+                <select
+                  value={kategori}
+                  onChange={(e) => setKategori(e.target.value)}
+                  className="w-full p-4 bg-blue-50/50 rounded-2xl font-bold text-[10px] text-blue-900 outline-none border-2 border-blue-100 focus:border-blue-900 transition-all"
+                >
+                  <option value="SPIRITUAL">SPIRITUAL</option>
+                  <option value="EMOSIONAL">EMOSIONAL</option>
+                  <option value="SOSIAL">SOSIAL</option>
+                  <option value="INTELEKTUAL">INTELEKTUAL</option>
+                  <option value="FISIK">FISIK</option>
+                </select>
+              </div>
+
+              {Number(nomor) === 4 && (
+                <div className="space-y-1">
+                  <label className="text-[8px] font-black uppercase text-slate-400 ml-2 flex items-center gap-1 text-red-600">
+                    <MdOutlinePlace /> Khusus Agama
+                  </label>
+                  <select
+                    value={subAgama}
+                    onChange={(e) => setSubAgama(e.target.value)}
+                    className="w-full p-4 bg-red-50/50 rounded-2xl font-bold text-[10px] text-red-900 outline-none border-2 border-red-100 focus:border-red-900 transition-all"
+                    required
+                  >
+                    <option value="">Pilih Agama...</option>
+                    <option value="Islam">Islam</option>
+                    <option value="Kristen">Kristen</option>
+                    <option value="Katolik">Katolik</option>
+                    <option value="Hindu">Hindu</option>
+                    <option value="Buddha">Buddha</option>
+                    <option value="Khonghucu">Khonghucu</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1">
               <label className="text-[8px] font-black uppercase text-slate-400 ml-2 flex items-center gap-1">
                 <MdDescription /> Deskripsi Butir SKU
@@ -199,7 +253,7 @@ export default function KelolaMasterSKU() {
         </div>
 
         {/* LIST VIEW */}
-        <div className="flex-1 px-6 mt-8 pb-10">
+        <div className="flex-1 px-6 mt-8 pb-10 overflow-y-auto">
           <div className="flex justify-between items-center mb-4 px-2">
             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
               Daftar SKU {tingkat}
@@ -219,9 +273,21 @@ export default function KelolaMasterSKU() {
                     <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center font-black text-blue-900 text-[10px] shadow-inner shrink-0">
                       {item.nomor}
                     </div>
-                    <p className="text-[10px] font-bold text-slate-600 leading-relaxed italic">
-                      {item.deskripsi}
-                    </p>
+                    <div className="flex flex-col">
+                      <p className="text-[10px] font-bold text-slate-600 leading-relaxed italic">
+                        {item.deskripsi}
+                      </p>
+                      <div className="flex gap-2 mt-1">
+                        <span className="text-[7px] font-black text-blue-400 uppercase tracking-widest">
+                          {item.kategori}
+                        </span>
+                        {item.sub_agama && (
+                          <span className="text-[7px] font-black text-red-500 uppercase tracking-widest border-l border-slate-200 pl-2">
+                            Agama: {item.sub_agama}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <button
                     onClick={() => handleDelete(item)}
@@ -235,8 +301,7 @@ export default function KelolaMasterSKU() {
           </div>
         </div>
 
-        {/* FOOTER */}
-        <footer className="p-8 text-center bg-slate-50 border-t border-slate-100">
+        <footer className="p-8 text-center bg-slate-50 border-t border-slate-100 mt-auto">
           <p className="text-[8px] text-slate-300 font-black uppercase tracking-[0.5em]">Laskar Bahari Curriculum Hub</p>
         </footer>
 

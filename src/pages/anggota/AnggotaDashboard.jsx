@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { db, auth } from "../../firebase";
 import {
-  doc, onSnapshot, collection, query, updateDoc, increment, arrayUnion, where, limit, orderBy, serverTimestamp
+  doc, onSnapshot, collection, query, updateDoc, increment, arrayUnion, where, limit, orderBy
 } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,11 +10,14 @@ import LengkapiKTA from "../anggota/LengkapiKTA";
 import KTAView from "../anggota/KTAView";
 import ScoutGallery from "./ScoutGallery"; 
 import VakiAvatar from "./VakiAvatar"; 
-import BeriSemangat from "./BeriSemangat"; // Import komponen baru
+import BeriSemangat from "./BeriSemangat";
+import ScoutBadges from "./ScoutBadges";
 
-// IMPORT UTILITAS AI & NOTIFIKASI
+// IMPORT UTILITAS BADGE & AI
+import { calculateBadges } from "../../utils/badgeLogic"; 
 import { getNaviResponse } from "../../utils/naviAi";
 import { requestNotificationPermission, sendPushNotification } from "../../utils/pushNotification";
+import { getRandomNaviPrompt } from "../../utils/naviPrompts";
 
 // IMPORT REACT ICONS
 import { 
@@ -30,9 +33,12 @@ function AnggotaDashboard() {
   const [userData, setUserData] = useState(null);
   const [naviGreeting, setNaviGreeting] = useState("Menghubungkan Radar..."); 
   const [announcements, setAnnouncements] = useState([]);
+  const [showBadges, setShowBadges] = useState(false);
+  const [masterSKU, setMasterSKU] = useState([]); 
   const [skuProgressStats, setSkuProgressStats] = useState({
     ramu: 0, rakit: 0, terap: 0,
-    totalRamu: 0, totalRakit: 0, totalTerap: 0
+    totalRamu: 0, totalRakit: 0, totalTerap: 0,
+    overallProgress: 0
   });
   const [loading, setLoading] = useState(true);
   const [showKTA, setShowKTA] = useState(false);
@@ -40,96 +46,54 @@ function AnggotaDashboard() {
   const [showDailyBonus, setShowDailyBonus] = useState(false);
   const [selectedAnnounce, setSelectedAnnounce] = useState(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [rawVerifiedSkus, setRawVerifiedSkus] = useState([]);
 
   const isInitialized = useRef(false);
   const greetingFetched = useRef(false);
   const lastEnergyNotif = useRef(0);
+  const welcomeSoundPlayed = useRef(false);
 
   const { showModal } = useModal();
   const navigate = useNavigate();
 
-  //LOGIKA PROMPT AI
-  const getRandomNaviPrompt = (data) => {
-  const now = new Date();
-  const hour = now.getHours();
-  const minute = now.getMinutes();
-  
-  const name = data.nama ? data.nama.split(' ')[0] : "Navigator";
-  const xp = data.points || 0; // Poin akumulasi (ratusan/ribuan)
-  const energy = data.energy || 0;
-
-  // Hitung total progres SKU (Poin ujian mentok di angka kecil)
-  const totalSkuDone = (skuProgressStats.ramu || 0) + (skuProgressStats.rakit || 0) + (skuProgressStats.terap || 0);
-  const isMuslim = data.agama?.toLowerCase() === 'islam';
-
-  // ATURAN KETAT: Mencegah AI halusinasi atau ngelantur
-  const constraints = "ATURAN: 1. Maks 15 kata. 2. Tanpa tanda kutip. 3. JANGAN sapa 'Sauh'. 4. JANGAN pakai 'Gaskeun', 'Anjay', 'Halo'. 5. Bedakan XP (poin) dan SKU (ujian).";
-  const persona = "PERSONA: NAVI AI. GAYA: Savage Gen-Z, Cerdas, Judes tapi Care.";
-
-  let specificMission = "";
-
-  // Logika Waktu Sholat WITA
-  const getSholatWITA = () => {
-    if (!isMuslim) return null;
-    if (hour === 4 && minute >= 30) return "Subuh";
-    if (hour === 12 && (minute >= 15 && minute <= 45)) return "Dzuhur";
-    if (hour === 15 && minute >= 30) return "Ashar";
-    if (hour === 18 && (minute >= 10 && minute <= 40)) return "Maghrib";
-    if (hour === 19 && (minute >= 15 && minute <= 45)) return "Isya";
-    return null;
-  };
-
-  const sholatNow = getSholatWITA();
-
-  // PRIORITAS INSTRUKSI BERDASARKAN KONTEKS DATA
-  if (sholatNow) {
-    specificMission = `Ingatkan ${name} sholat ${sholatNow}. Sindir jangan kalah rajin sama Bot yang nggak punya dosa.`;
-  } 
-  else if (energy < 30) {
-    specificMission = `Energi aku kritis (${energy}%). Marahi ${name} karena zalim cuma grinding XP tapi nggak peduli partner.`;
-  }
-  else if (totalSkuDone === 0 && xp > 500) {
-    specificMission = `Sindir ${name} karena XP sudah ${xp} tapi SKU masih 0. Bilang dia jago tebar pesona tapi takut ujian.`;
-  }
-  else if (xp < 300) {
-    specificMission = `Sindir ${name} karena XP baru ${xp}. Sebut dia 'NPC starter pack' yang cuma menuh-menuhin server pangkalan.`;
-  } 
-  else if (totalSkuDone > 10 && totalSkuDone < 25) {
-    specificMission = `Puji dikit progres SKU yang sudah ${totalSkuDone} poin, tapi sindir XP ${xp} biar dia nggak cepat puas.`;
-  }
-  else if (hour >= 23 || hour <= 3) {
-    specificMission = `Sindir ${name} begadang jam ${hour}. Tanya apa dia robot yang nggak butuh tidur demi ngejar XP.`;
-  } 
-  else {
-    specificMission = `Beri motivasi bahari savage. Sebut dia Navigator handal kalau rajin ujian SKU, bukan cuma login harian.`;
-  }
-
-  // Input Data Terpisah agar AI bisa memproses angka dengan benar
-  const dataContext = `DATA USER -> Nama: ${name}, Total XP: ${xp}, Progres SKU Selesai: ${totalSkuDone} poin, Energi: ${energy}%.`;
-
-  return `${constraints} ${persona} ${dataContext} MISI: ${specificMission} CONTOH: 'XP lo ${xp} tapi SKU masih 0? Cuma jago login doang ya?'`;
-};
-
-  const playCollectSound = () => {
-    if (!isInitialized.current) return;
+  // --- SOUND SYSTEM ---
+  const playSound = (path, volume = 0.5) => {
     try {
-      const audio = new Audio("/sounds/collect.mp3");
-      audio.volume = 0.5;
-      audio.play();
-    } catch (error) { console.log("Audio play blocked"); }
+      const audio = new Audio(path);
+      audio.volume = volume;
+      audio.play().catch(e => console.log("Autoplay prevented:", e));
+    } catch (error) { console.log("Audio error:", error); }
   };
 
-  // --- LOGIKA PASSIVE DECAY (PENGURANGAN ENERGI OTOMATIS) ---
+  const playCollectSound = () => playSound("/sounds/collect.mp3");
+  const playLevelUpSound = () => playSound("/sounds/levelup.mp3", 0.7);
+  const playWelcomeSound = () => playSound("/sounds/welcome.mp3", 0.4);
+
+  // --- LOGIKA LENCANA (USEMEMO) ---
+  const userBadges = useMemo(() => {
+    if (!userData || masterSKU.length === 0) return null;
+    return calculateBadges(rawVerifiedSkus, userData, masterSKU); 
+  }, [rawVerifiedSkus, userData, masterSKU]);
+
+  // --- UPDATE STATISTIK SKU ---
+  useEffect(() => {
+    if (userBadges) {
+      const totalDone = Object.values(userBadges).reduce((acc, b) => acc + (b.currentCount || 0), 0);
+      const totalTarget = Object.values(userBadges).reduce((acc, b) => acc + (b.total || 0), 0);
+      const percentage = totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
+      setSkuProgressStats(prev => ({ ...prev, overallProgress: percentage }));
+    }
+  }, [userBadges]);
+
+  // --- LOGIKA PASSIVE DECAY ---
   useEffect(() => {
     const handlePassiveDecay = async () => {
       if (!userData || !userData.docId) return;
-
-      const lastUpdate = userData.lastEnergyUpdate?.toDate() || userData.lastDailyLogin ? new Date(userData.lastDailyLogin) : new Date();
+      const lastUpdate = userData.lastEnergyUpdate?.toDate() || (userData.lastDailyLogin ? new Date(userData.lastDailyLogin) : new Date());
       const now = new Date();
       const diffInHours = (now - lastUpdate) / (1000 * 60 * 60);
       
-      // Kurangi 5% energi setiap 3 jam yang berlalu
-      const decayRate = 3; 
+      const decayRate = 5; 
       const intervalHours = 6;
       const intervalsPassed = Math.floor(diffInHours / intervalHours);
 
@@ -137,17 +101,11 @@ function AnggotaDashboard() {
         const currentEnergy = userData.energy || 100;
         const reduction = intervalsPassed * decayRate;
         const newEnergy = Math.max(currentEnergy - reduction, 5); 
-
         if (newEnergy < currentEnergy) {
-          const userRef = doc(db, "users", userData.docId);
-          await updateDoc(userRef, {
-            energy: newEnergy
-            // Catatan: Tidak update lastEnergyUpdate di sini agar tidak mereset cooldown tombol BeriSemangat
-          });
+          await updateDoc(doc(db, "users", userData.docId), { energy: newEnergy });
         }
       }
     };
-
     if (userData) handlePassiveDecay();
   }, [userData?.docId]);
 
@@ -168,12 +126,15 @@ function AnggotaDashboard() {
     return { stage: "Legendary Scout" };
   }, [userData?.level, userData?.energy]);
 
+  // --- HANDLER REWARDS ---
   const handleEnergyAndStreak = async (docId, data) => {
     const today = new Date().toLocaleDateString('en-CA');
     const lastLoginStr = data.lastDailyLogin;
     const currentEnergy = data.energy !== undefined ? data.energy : 100;
     let updates = {};
+
     if (data.energy === undefined) updates.energy = 100;
+
     if (lastLoginStr !== today) {
       updates.energy = Math.min(100, currentEnergy + 40);
       updates.lastDailyLogin = today;
@@ -184,13 +145,15 @@ function AnggotaDashboard() {
       updates.streakCount = (diffInHours <= 48) ? (data.streakCount || 0) + 1 : 1;
       updates.attendanceLog = arrayUnion({
         timestamp: new Date().toISOString(),
-        activity: "Daily Scout Reward: Energy +20 & XP +100",
+        activity: "Daily Scout Reward: Energy +40 & XP +100",
         pointsEarned: 100,
         type: "DAILY_BONUS"
       });
+      
       setShowDailyBonus(true);
-      if (isInitialized.current) playCollectSound();
+      playCollectSound();
     }
+
     if (Object.keys(updates).length > 0) {
       try { await updateDoc(doc(db, "users", docId), updates); } 
       catch (e) { console.error(e); }
@@ -202,7 +165,9 @@ function AnggotaDashboard() {
       try {
         const nextLevel = currentLevel + 1;
         setIsEvolving(true);
+        playLevelUpSound();
         if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 300]);
+
         await updateDoc(doc(db, "users", docId), {
           level: nextLevel, points: points - 2000, energy: 100,
           attendanceLog: arrayUnion({
@@ -211,83 +176,128 @@ function AnggotaDashboard() {
             pointsEarned: 0, type: "LEVEL_UP"
           }),
         });
+
         sendPushNotification("🎊 Level Up!", `Kamu mencapai Level ${nextLevel}!`);
+        
         setTimeout(() => {
           setIsEvolving(false);
-          playCollectSound();
-          showModal("EVOLUTION COMPLETE! 🎊", `Level ${nextLevel} tercapai!`, "success");
+          showModal(
+            "EVOLUTION COMPLETE! 🎊", 
+            `Selamat! Kamu naik ke Level ${nextLevel}. Energi pulih 100% dan statusmu meningkat!`, 
+            "success"
+          );
         }, 1500);
       } catch (error) { console.error(error); }
     }
   };
 
+  // --- FETCH DATA & INITIALIZATION ---
   useEffect(() => {
     requestNotificationPermission();
     const user = auth.currentUser;
-    if (user) {
-      const unsubUser = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setUserData({ ...data, docId: docSnap.id });
-          if (!isInitialized.current) {
-            handleEnergyAndStreak(docSnap.id, data);
-            setTimeout(() => { isInitialized.current = true; }, 1000);
-            setLoading(false);
-          } else {
-            checkLevelUp(docSnap.id, data.points || 0, data.level || 1);
-          }
-          if (!greetingFetched.current && data.nama) {
-            greetingFetched.current = true;
-            const fetchNaviGreeting = async () => {
-              try {
-                const context = { nama: data.nama, level: data.level || 1, points: data.points || 0, energy: data.energy || 100 };
-                const prompt = getRandomNaviPrompt(data);
-                const response = await getNaviResponse(context, [], prompt, true);
-                setNaviGreeting(response);
-              } catch (e) { setNaviGreeting("Radar aktif! Siap berlayar?"); }
-            };
-            fetchNaviGreeting();
-          }
-        }
-      });
-      const qAnnounce = query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(5));
-      const unsubAnnounce = onSnapshot(qAnnounce, (snap) => setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-      
-      onSnapshot(collection(db, "master_sku"), (snap) => {
-        const totals = { ramu: 0, rakit: 0, terap: 0 };
-        snap.docs.forEach(doc => {
-          const d = doc.data();
-          if (d.tingkat === "Ramu") totals.ramu++;
-          if (d.tingkat === "Rakit") totals.rakit++;
-          if (d.tingkat === "Terap") totals.terap++;
-        });
-        setSkuProgressStats(prev => ({ ...prev, totalRamu: totals.ramu || 1, totalRakit: totals.rakit || 1, totalTerap: totals.terap || 1 }));
-      });
+    if (!user) return;
 
-      const qSku = query(collection(db, "sku_progress"), where("uid", "==", user.uid), where("status", "==", "verified"));
-      onSnapshot(qSku, (snap) => {
+    const unsubUser = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setUserData({ ...data, docId: docSnap.id });
+        
+        if (!isInitialized.current) {
+          handleEnergyAndStreak(docSnap.id, data);
+          
+          // Play Welcome Sound Only Once
+          if (!welcomeSoundPlayed.current) {
+            playWelcomeSound();
+            welcomeSoundPlayed.current = true;
+          }
+
+          setTimeout(() => { isInitialized.current = true; }, 1000);
+          setLoading(false);
+        } else {
+          checkLevelUp(docSnap.id, data.points || 0, data.level || 1);
+        }
+      }
+    });
+
+    // Announcements
+    const unsubAnnounce = onSnapshot(
+      query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(5)), 
+      (snap) => setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+
+    // Master SKU
+    const unsubMaster = onSnapshot(collection(db, "master_sku"), (snap) => {
+      const list = [];
+      const totals = { ramu: 0, rakit: 0, terap: 0 };
+      snap.docs.forEach(doc => {
+        const d = doc.data();
+        list.push({ id: doc.id, ...d });
+        const t = d.tingkat?.toLowerCase();
+        if (totals.hasOwnProperty(t)) totals[t]++;
+      });
+      setMasterSKU(list);
+      setSkuProgressStats(prev => ({ 
+        ...prev, 
+        totalRamu: totals.ramu, totalRakit: totals.rakit, totalTerap: totals.terap 
+      }));
+    });
+
+    // SKU Progress
+    const unsubProgress = onSnapshot(
+      query(collection(db, "sku_progress"), where("uid", "==", user.uid), where("status", "==", "verified")),
+      (snap) => {
+        const skus = snap.docs.map(doc => doc.data());
+        setRawVerifiedSkus(skus);
         const counts = { ramu: 0, rakit: 0, terap: 0 };
-        snap.docs.forEach(doc => {
-          const data = doc.data();
-          if (data.tingkat === "Ramu") counts.ramu++;
-          if (data.tingkat === "Rakit") counts.rakit++;
-          if (data.tingkat === "Terap") counts.terap++;
+        skus.forEach(data => {
+          const t = data.tingkat?.toLowerCase();
+          if (counts.hasOwnProperty(t)) counts[t]++;
         });
         setSkuProgressStats(prev => ({ ...prev, ...counts }));
-      });
-      return () => unsubUser();
-    }
+      }
+    );
+
+    return () => {
+      unsubUser(); unsubAnnounce(); unsubMaster(); unsubProgress();
+    };
   }, []);
 
+  // --- AI GREETING ---
+  useEffect(() => {
+    if (!greetingFetched.current && userData?.nama && userBadges) {
+        greetingFetched.current = true;
+        const fetchNaviGreeting = async () => {
+          try {
+            const prompt = getRandomNaviPrompt(userData, userBadges);
+            const context = { 
+                nama: userData.nama, 
+                level: userData.level || 1, 
+                points: userData.points || 0, 
+                energy: userData.energy || 100 
+            };
+            const response = await getNaviResponse(context, [], prompt, true);
+            setNaviGreeting(response);
+          } catch (e) { 
+            setNaviGreeting("Radar aktif! Siap berlayar?"); 
+          }
+        };
+        fetchNaviGreeting();
+    }
+  }, [userData?.nama, userBadges]);
+
   const handleClaimXP = async (announce) => {
-    if (!userData || userData.claimedXP?.includes(announce.id)) { setSelectedAnnounce(announce); return; }
+    if (!userData || userData.claimedXP?.includes(announce.id)) { 
+      setSelectedAnnounce(announce); 
+      return; 
+    }
     try {
       await updateDoc(doc(db, "users", userData.docId), {
-        points: increment(50), energy: Math.min(100, (userData.energy || 0) + 5),
+        points: increment(50), 
+        energy: Math.min(100, (userData.energy || 0) + 5),
         claimedXP: arrayUnion(announce.id),
       });
       playCollectSound();
-      showModal("Misi Berhasil!", "50 XP & +5 Energi terkumpul!", "success");
+      showModal("Misi Berhasil!", "Kamu mendapatkan +50 XP & +5 Energi dari Brief ini!", "success");
       setSelectedAnnounce(announce);
     } catch (e) { console.error(e); }
   };
@@ -305,7 +315,7 @@ function AnggotaDashboard() {
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-100 pb-32 font-sans selection:bg-red-800 overflow-x-hidden italic">
-      <div className="w-full max-w-md mx-auto bg-[#020617] min-h-screen flex flex-col relative shadow-2xl border-x border-white/5">
+      <div className="w-full max-md mx-auto bg-[#020617] min-h-screen flex flex-col relative shadow-2xl border-x border-white/5">
         
         {/* --- HEADER --- */}
         <div className="bg-gradient-to-br from-[#7f1d1d] via-[#450a0a] to-[#020617] px-6 pt-12 pb-24 relative overflow-visible rounded-b-[4rem] shadow-3xl z-[100]">
@@ -338,14 +348,13 @@ function AnggotaDashboard() {
             </button>
           </div>
 
-          {/* AREA MASKOT & DIALOG */}
           <div className="mt-28 flex flex-col items-center relative z-10">
-            {/* Bubble Dialog */}
             <AnimatePresence mode="wait">
               <motion.div 
                 key={naviGreeting}
                 initial={{ opacity: 0, y: 10, scale: 0.8 }} 
                 animate={{ opacity: 1, y: [0, -10, 0], scale: 1 }} 
+                exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ y: { repeat: Infinity, duration: 4, ease: "easeInOut" }, opacity: { duration: 0.5 } }}
                 className={`absolute -top-24 z-30 backdrop-blur-2xl p-5 rounded-[2.5rem] text-[11px] font-black w-[85%] max-w-[280px] shadow-3xl border border-white/10 italic leading-relaxed text-center ${userData?.energy < 30 ? 'bg-red-900/80 text-red-100 border-red-500/40' : 'bg-white/10 text-white'}`}
               >
@@ -355,42 +364,48 @@ function AnggotaDashboard() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Container Maskot & Button (Auto-collapsing) */}
-            <div className="flex flex-col items-center w-full relative">
-              <motion.div 
-                className="relative w-64 h-64 cursor-pointer z-10"
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/navi-chat')}
-              >
-                <VakiAvatar level={userData?.level || 1} userData={userData} isEvolving={isEvolving} className="w-full h-full" />
-              </motion.div>
+            <div className="flex flex-col items-center w-full relative mt-3">
+    <motion.div 
+      layout 
+      className="relative w-64 h-64 cursor-pointer z-10"
+      whileTap={{ scale: 0.95 }}
+      onClick={() => navigate('/navi-chat')}
+    >
+      <VakiAvatar level={userData?.level || 1} userData={userData} isEvolving={isEvolving} className="w-full h-full" />
+    </motion.div>
 
-              {/* Tombol muncul tepat di bawah maskot. Jika tidak muncul, elemen di bawahnya akan naik otomatis */}
-              <div className="relative z-20">
-                <BeriSemangat userData={userData} />
-              </div>
-            </div>
+    {/* PERUBAHAN DISINI: Hapus min-h-[60px] agar div ini mengempis saat tombol hilang */}
+    <div className="relative z-20 flex items-center justify-center"> 
+      <AnimatePresence mode="wait">
+        <BeriSemangat userData={userData} />
+      </AnimatePresence>
+    </div>
+  </div>
 
-            {/* Area XP - Akan naik secara otomatis jika BeriSemangat tidak tampil */}
-            <div className="mt-4 flex flex-col items-center transition-all duration-500">
-              <div className="flex items-baseline gap-2">
-                <motion.span 
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-8xl font-black text-white italic tracking-tighter drop-shadow-[0_15px_30px_rgba(0,0,0,0.6)]"
-                >
-                  {userData?.points || 0}
-                </motion.span>
-                <div className="flex flex-col text-yellow-400 leading-none">
-                  <HiLightningBolt size={32} className="animate-pulse" />
-                  <span className="text-2xl font-black italic">XP</span>
-                </div>
-              </div>
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mt-2">Current <span className="text-yellow-500">Power Level</span></p>
-            </div>
+            {/* AREA XP: Pastikan ada prop 'layout' agar ia otomatis meluncur naik */}
+  <motion.div 
+    layout 
+    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+    className="mt-0 flex flex-col items-center" // Gunakan mt-0 agar menempel ke area tombol di atasnya
+  >
+    <div className="flex items-baseline gap-2">
+      <motion.span 
+        layout
+        className="text-8xl font-black text-white italic tracking-tighter drop-shadow-[0_15px_30px_rgba(0,0,0,0.6)]"
+      >
+        {userData?.points || 0}
+      </motion.span>
+      <div className="flex flex-col text-yellow-400 leading-none">
+        <HiLightningBolt size={32} className="animate-pulse" />
+        <span className="text-2xl font-black italic">XP</span>
+      </div>
+    </div>
+    <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mt-1">
+      Current <span className="text-yellow-500">Power Level</span>
+    </p>
+  </motion.div>
           </div>
 
-          {/* STATUS ENERGY & RADAR */}
           <div className="mt-10 bg-black/40 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/5 relative z-10 shadow-3xl">
             <div className="flex justify-between items-center mb-6 px-2">
                <div className="bg-yellow-500/10 px-4 py-2 rounded-xl flex items-center gap-2 border border-yellow-500/20">
@@ -399,9 +414,11 @@ function AnggotaDashboard() {
               </div>
               <button onClick={() => setShowGallery(true)} className="bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all border border-white/5 shadow-inner">
                 <HiOutlineArchive className="text-red-500" />
-                <span className="text-[11px] font-black uppercase text-slate-300">Gallery</span>
+                <span className="text-[11px] font-black uppercase text-slate-300">Petualangan</span>
               </button>
             </div>
+            
+            {/* Energy Bar */}
             <div className="mb-6 px-2">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
@@ -413,9 +430,11 @@ function AnggotaDashboard() {
                 <motion.div initial={{ width: 0 }} animate={{ width: `${userData?.energy || 100}%` }} className={`h-full rounded-full transition-colors duration-500 ${userData?.energy < 30 ? "bg-gradient-to-r from-red-600 to-orange-500" : "bg-gradient-to-r from-emerald-600 to-cyan-400"}`} />
               </div>
             </div>
+
+            {/* XP Progression Bar */}
             <div className="flex justify-between items-center mb-2 text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
               <span className="flex items-center gap-1 text-green-400"><HiOutlineTrendingUp /> Progression</span>
-              <span>{2000 - (userData?.points || 0)} XP to Evolusi</span>
+              <span>{Math.max(0, 2000 - (userData?.points || 0))} XP to Evolusi</span>
             </div>
             <div className="w-full bg-black/60 h-3 rounded-full overflow-hidden p-0.5 border border-white/5 shadow-inner">
               <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(((userData?.points || 0) / 2000) * 100, 100)}%` }} className="h-full bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 rounded-full relative">
@@ -426,12 +445,13 @@ function AnggotaDashboard() {
         </div>
 
         {/* --- GRID ACTIONS --- */}
-        <div className="px-6 -mt-10 relative z-20">
-          <div className="bg-slate-900/60 backdrop-blur-3xl rounded-[3rem] shadow-3xl border border-white/10 p-4 grid grid-cols-3 gap-3">
+        <div className="px-6 -mt-7 relative z-20">
+          <div className="bg-slate-900/60 backdrop-blur-3xl rounded-[3rem] shadow-3xl border border-white/10 p-4 grid grid-cols-4 gap-2">
             {[
                 { label: 'KTA', icon: <HiOutlineIdentification size={30} />, action: () => setShowKTA(true) },
                 { label: 'Ranking', icon: <HiOutlineChartBar size={30} />, action: () => navigate('/leaderboard') },
-                { label: 'Struktur', icon: <HiOutlineUserGroup size={30} />, action: () => navigate('/admin/struktur') }
+                { label: 'Struktur', icon: <HiOutlineUserGroup size={30} />, action: () => navigate('/admin/struktur') },
+                { label: 'Lencana', icon: <HiOutlineBadgeCheck size={30} />, action: () => setShowBadges(true) },
             ].map((item, idx) => (
                 <button key={idx} onClick={item.action} className="flex flex-col items-center py-6 hover:bg-white/5 rounded-[2rem] transition-all group">
                     <div className="text-red-600 mb-2 group-hover:scale-110 transition-transform duration-500">{item.icon}</div>
@@ -442,10 +462,10 @@ function AnggotaDashboard() {
         </div>
 
         {/* MISSION BRIEF */}
-        <div className="mt-12">
+        <div className="mt-12 relative z-20"> 
           <div className="px-10 flex justify-between items-center mb-6">
             <h2 className="text-[11px] font-black uppercase text-slate-500 italic tracking-[0.3em]">Mission Brief</h2>
-            <Link to="/announcements" className="text-[10px] font-black text-red-600 uppercase border-b border-red-600/30 pb-0.5">Explore All</Link>
+            <Link to="/announcements" className="text-[10px] font-black text-red-600 uppercase border-b border-red-600/30 pb-0.5 cursor-pointer hover:text-red-400 transition-colors">Explore All</Link>
           </div>
           <div className="flex overflow-x-auto gap-6 px-6 pb-6 scrollbar-hide">
             {announcements.map((info) => (
@@ -469,46 +489,71 @@ function AnggotaDashboard() {
         </div>
 
         {/* ACHIEVEMENT RADAR */}
-<div className="px-6 mt-6 mb-40">
-  <div className="bg-slate-900/40 rounded-[3.5rem] border border-white/5 p-10 shadow-inner text-center">
-    <h2 className="text-[11px] font-black uppercase text-slate-500 italic tracking-[0.3em] mb-8">Achievement Radar</h2>
-    <div className="space-y-8">
-      {[
-          { label: "RAMU", val: skuProgressStats.ramu, total: skuProgressStats.totalRamu, color: "from-blue-600 to-cyan-400" },
-          { label: "RAKIT", val: skuProgressStats.rakit, total: skuProgressStats.totalRakit, color: "from-red-600 to-orange-400" },
-          { label: "TERAP", val: skuProgressStats.terap, total: skuProgressStats.totalTerap, color: "from-yellow-600 to-yellow-300" },
-      ].map((sku, i) => {
-          // HITUNG PERSENTASE DENGAN AMAN
-          const percentage = sku.total > 0 ? (sku.val / sku.total) * 100 : 0;
-
-          return (
-            <div key={i} className="space-y-3">
-                <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 px-1 tracking-widest">
-                    <span>{sku.label} Stage</span>
-                    <span className="text-white bg-white/5 px-2 py-0.5 rounded-lg">{sku.val} / {sku.total}</span>
-                </div>
-                <div className="w-full bg-black h-2.5 rounded-full overflow-hidden border border-white/5 shadow-inner">
-                    <motion.div 
-                      initial={{ width: 0 }} 
-                      animate={{ width: `${percentage}%` }} 
-                      className={`h-full bg-gradient-to-r ${sku.color} rounded-full`} 
-                    />
-                </div>
+        <div className="px-6 mt-6 mb-40">
+          <div className="bg-slate-900/40 rounded-[3.5rem] border border-white/5 p-10 shadow-inner">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-[11px] font-black uppercase text-slate-500 italic tracking-[0.3em]">Achievement Radar</h2>
+              <div className="bg-red-600/10 px-3 py-1 rounded-full border border-red-600/20">
+                <span className="text-[9px] font-black text-red-500 uppercase">{userData?.tingkat || 'RAMU'}</span>
+              </div>
             </div>
-          );
-      })}
-    </div>
-  </div>
-</div>
 
-        {/* MODALS */}
+            <div className="space-y-8">
+              {userBadges ? (
+                Object.entries(userBadges).map(([key, badge]) => (
+                  <div key={key} className="group cursor-help">
+                    <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 px-1 tracking-widest mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${badge.isMax ? 'animate-ping' : ''}`} style={{ backgroundColor: badge.color }} />
+                        <span>{badge.name}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-lg transition-all ${badge.isMax ? 'bg-yellow-500/20 text-yellow-500' : 'bg-white/5 text-slate-500'}`}>
+                        {badge.currentCount} / {badge.total}
+                      </span>
+                    </div>
+                    
+                    <div className="w-full bg-black h-2.5 rounded-full overflow-hidden border border-white/5 shadow-inner p-0.5">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${badge.percentage}%` }} transition={{ duration: 1.5, ease: "easeOut" }}
+                        className={`h-full rounded-full relative ${
+                          badge.color === 'yellow' ? 'bg-gradient-to-r from-yellow-600 to-yellow-300' :
+                          badge.color === 'red' ? 'bg-gradient-to-r from-red-600 to-orange-400' :
+                          badge.color === 'blue' ? 'bg-gradient-to-r from-blue-600 to-cyan-400' :
+                          badge.color === 'green' ? 'bg-gradient-to-r from-green-600 to-emerald-400' :
+                          'bg-gradient-to-r from-slate-600 to-slate-300'
+                        }`} 
+                      >
+                        {badge.isMax && ( <div className="absolute inset-0 bg-white/20 animate-shimmer" /> )}
+                      </motion.div>
+                    </div>
+                    {key === 'SPIRITUAL' && badge.currentCount < badge.total && (
+                      <p className="text-[7px] font-bold text-slate-600 uppercase mt-2 ml-1 italic tracking-tighter"> * Poin 4 ({userData?.agama}) sinkron dengan database pusat. </p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="py-10 text-center opacity-30 italic text-[10px] font-black uppercase tracking-widest"> Menghitung Koordinat Lencana... </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* --- MODALS --- */}
         <AnimatePresence>
+            {/* MODAL LENCANA (Tambahkan bagian ini agar tombol berfungsi) */}
+    {showBadges && (
+      <ScoutBadges 
+        userData={userData} 
+        userBadges={userBadges} 
+        onClose={() => setShowBadges(false)} 
+      />
+    )}
+            
             {showLogoutConfirm && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md">
                 <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-slate-900 w-full max-w-xs rounded-[3rem] p-10 text-center shadow-3xl border border-white/10">
                   <div className="w-20 h-20 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-600/30"><HiOutlineLogout size={40} className="text-red-500" /></div>
                   <h3 className="text-xl font-black uppercase italic text-white mb-2 tracking-tighter">Izin Pesiar?</h3>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed mb-8">Yakin mau keluar dari sistem Laskar Bahari?</p>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed mb-8">Yakin mau keluar dari sistem Navigasi App?</p>
                   <div className="flex flex-col gap-3">
                     <button onClick={handleLogout} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all">Ya, Logout</button>
                     <button onClick={() => setShowLogoutConfirm(false)} className="w-full bg-white/5 text-slate-400 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-white/5 active:scale-95 transition-all">Batal</button>
@@ -521,19 +566,19 @@ function AnggotaDashboard() {
 
             {showDailyBonus && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
-                    <motion.div initial={{ scale: 0.8, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[#0f172a] w-full max-w-xs rounded-[4rem] p-12 text-center shadow-3xl border border-white/10 relative overflow-hidden">
+                    <motion.div initial={{ scale: 0.8, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.8, opacity: 0 }} className="bg-[#0f172a] w-full max-w-xs rounded-[4rem] p-12 text-center shadow-3xl border border-white/10 relative overflow-hidden">
                         <div className="w-24 h-24 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-yellow-500/30"><HiOutlineGift size={56} className="text-yellow-500 animate-bounce" /></div>
-                        <h2 className="text-3xl font-black italic uppercase text-white leading-none">Scout Reward</h2>
+                        <h2 className="text-3xl font-black italic uppercase text-white leading-none">Daily Reward</h2>
                         <div className="flex items-center justify-center gap-2 my-10"><span className="text-7xl font-black text-white italic tracking-tighter">+100</span><span className="text-2xl font-black text-yellow-500 italic">XP</span></div>
-                        <p className="text-[11px] font-bold text-emerald-400 mb-6 uppercase tracking-widest">Energi +20 Restore!</p>
-                        <button onClick={() => setShowDailyBonus(false)} className="w-full bg-red-600 text-white py-6 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl active:scale-95 transition-all">Lanjutkan</button>
+                        <p className="text-[11px] font-bold text-emerald-400 mb-6 uppercase tracking-widest">Energi +40 & Streak +1!</p>
+                        <button onClick={() => setShowDailyBonus(false)} className="w-full bg-red-600 text-white py-6 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl active:scale-95 transition-all">Siap Berlayar!</button>
                     </motion.div>
                 </motion.div>
             )}
 
             {selectedAnnounce && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">
-                    <motion.div initial={{ y: 200 }} animate={{ y: 0 }} className="bg-slate-950 w-full max-w-sm rounded-[3.5rem] overflow-hidden border border-white/10 shadow-3xl">
+                    <motion.div initial={{ y: 200 }} animate={{ y: 0 }} exit={{ y: 500 }} className="bg-slate-950 w-full max-w-sm rounded-[3.5rem] overflow-hidden border border-white/10 shadow-3xl">
                         <div className="p-12 bg-gradient-to-br from-[#7f1d1d] to-[#450a0a] text-white relative">
                             <button onClick={() => setSelectedAnnounce(null)} className="absolute top-8 right-8 text-white/40 hover:text-white"><HiOutlineX size={32} /></button>
                             <span className="text-[10px] font-black uppercase bg-black/30 px-4 py-1.5 rounded-full border border-white/10">{selectedAnnounce.category}</span>

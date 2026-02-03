@@ -29,6 +29,8 @@ export default function DaftarSKU({ userData }) {
   const [submitting, setSubmitting] = useState(null);
   const navigate = useNavigate();
 
+  const userAgama = userData?.agama || "";
+
   // --- LOGIKA PENENTUAN TINGKATAN SKU ---
   const getTargetTingkat = () => {
     const tingkatUser = userData?.tingkat?.toUpperCase();
@@ -45,6 +47,7 @@ export default function DaftarSKU({ userData }) {
     if (!auth.currentUser) return;
     setLoading(true);
 
+    // 1. Ambil Master Data SKU
     const qMaster = query(
       collection(db, "master_sku"),
       where("tingkat", "==", tingkatTarget),
@@ -52,11 +55,22 @@ export default function DaftarSKU({ userData }) {
     );
 
     const unsubMaster = onSnapshot(qMaster, (snap) => {
-      const list = [];
-      snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
+      let list = [];
+      snap.forEach((doc) => {
+        const data = doc.data();
+        // Filter Poin 4 Berdasarkan Agama
+        if (Number(data.nomor) === 4) {
+          if (data.sub_agama?.toLowerCase() === userAgama?.toLowerCase()) {
+            list.push({ id: doc.id, ...data });
+          }
+        } else {
+          list.push({ id: doc.id, ...data });
+        }
+      });
       setMasterSKU(list);
     });
 
+    // 2. Ambil Progress User
     const qProgress = query(
       collection(db, "sku_progress"),
       where("uid", "==", auth.currentUser.uid),
@@ -67,7 +81,11 @@ export default function DaftarSKU({ userData }) {
       const progressMap = {};
       snap.forEach((doc) => {
         const data = doc.data();
-        progressMap[String(data.nomor_poin)] = data.status;
+        /** * PENTING: Gunakan kombinasi nomor + deskripsi sebagai key 
+         * agar sub-poin agama (nomor sama, deskripsi beda) tidak saling tindih.
+         */
+        const uniqueKey = `${data.nomor_poin}-${data.deskripsi_poin}`;
+        progressMap[uniqueKey] = data.status;
       });
       setSkuProgress(progressMap);
       setLoading(false);
@@ -77,11 +95,15 @@ export default function DaftarSKU({ userData }) {
       unsubMaster();
       unsubProgress();
     };
-  }, [tingkatTarget, auth.currentUser]);
+  }, [tingkatTarget, auth.currentUser, userAgama]);
 
   const handleAjukan = async (poin) => {
-    if (skuProgress[String(poin.nomor)]) return;
-    setSubmitting(poin.nomor);
+    // Cek menggunakan uniqueKey
+    const uniqueKey = `${poin.nomor}-${poin.deskripsi}`;
+    if (skuProgress[uniqueKey]) return;
+    
+    // Gunakan ID dokumen sebagai ID submitting agar spesifik per item
+    setSubmitting(poin.id);
     try {
       await addDoc(collection(db, "sku_progress"), {
         uid: auth.currentUser.uid,
@@ -89,12 +111,15 @@ export default function DaftarSKU({ userData }) {
         tingkat: tingkatTarget,
         nomor_poin: Number(poin.nomor),
         deskripsi_poin: poin.deskripsi,
+        kategori: (poin.kategori || "SPIRITUAL").toUpperCase(),
+        sub_agama: poin.sub_agama || "", 
         status: "pending",
         tgl_pengajuan: serverTimestamp(),
         verifikator_nama: "",
       });
     } catch (error) {
       console.error("Error Pengajuan:", error);
+      alert("Gagal mengirim pengajuan.");
     } finally {
       setSubmitting(null);
     }
@@ -110,7 +135,7 @@ export default function DaftarSKU({ userData }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-100 pb-32 font-sans overflow-x-hidden selection:bg-red-800">
+    <div className="min-h-screen bg-[#020617] text-slate-100 pb-32 font-sans overflow-x-hidden selection:bg-red-800 italic">
       <div className="w-full max-w-md mx-auto min-h-screen flex flex-col relative shadow-2xl border-x border-white/5">
         
         {/* HEADER AREA */}
@@ -133,12 +158,10 @@ export default function DaftarSKU({ userData }) {
             <div className="flex items-center gap-2">
               <div className="h-1 w-12 bg-red-600 rounded-full" />
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
-                {userData?.tingkat === "Terap" ? "Level Maksimal" : "Daftar SKU"}
+                {userData?.tingkat?.toUpperCase() === tingkatTarget.toUpperCase() ? "Misi Aktif" : "Misi Pengembangan Diri"}
               </p>
             </div>
           </div>
-          
-          <HiOutlineAcademicCap className="absolute -bottom-10 -right-10 w-48 h-48 text-white opacity-[0.03] rotate-12" />
         </div>
 
         {/* LIST POIN SKU */}
@@ -147,12 +170,13 @@ export default function DaftarSKU({ userData }) {
             <div className="bg-slate-900/60 backdrop-blur-3xl rounded-[3rem] p-12 text-center border border-white/10 flex flex-col items-center">
               <HiOutlineDocumentText className="w-12 h-12 text-slate-700 mb-4" />
               <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-relaxed italic">
-                Buku SKU {tingkatTarget} belum tersedia <br /> dalam kurikulum saat ini.
+                Buku SKU {tingkatTarget} {userAgama ? `(${userAgama})` : ""} belum tersedia.
               </p>
             </div>
           ) : (
             masterSKU.map((poin, index) => {
-              const status = skuProgress[String(poin.nomor)];
+              // Gunakan uniqueKey yang sama untuk mengecek status
+              const status = skuProgress[`${poin.nomor}-${poin.deskripsi}`];
               const isVerified = status === "verified";
               const isPending = status === "pending";
 
@@ -163,11 +187,9 @@ export default function DaftarSKU({ userData }) {
                   transition={{ delay: index * 0.05 }}
                   key={poin.id}
                   className={`relative p-6 rounded-[2.5rem] border backdrop-blur-3xl transition-all duration-500 group overflow-hidden ${
-                    isVerified 
-                      ? "bg-emerald-500/5 border-emerald-500/20" 
-                      : isPending 
-                      ? "bg-amber-500/5 border-amber-500/20"
-                      : "bg-slate-900/60 border-white/10"
+                    isVerified ? "bg-emerald-500/5 border-emerald-500/20" : 
+                    isPending ? "bg-amber-500/5 border-amber-500/20" : 
+                    "bg-slate-900/60 border-white/10"
                   }`}
                 >
                   <div className="flex justify-between items-start mb-4 relative z-10">
@@ -181,7 +203,9 @@ export default function DaftarSKU({ userData }) {
                         <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-500 block mb-1">Misi #{poin.nomor}</span>
                         <div className="flex items-center gap-2">
                           <HiOutlineFire className={isVerified ? "text-red-500" : "text-slate-700"} />
-                          <span className="text-[10px] font-black uppercase italic text-slate-300 tracking-tighter">Butir SKU</span>
+                          <span className="text-[10px] font-black uppercase italic text-slate-300 tracking-tighter">
+                            {poin.kategori || "BUTIR SKU"} {Number(poin.nomor) === 4 ? `(${poin.sub_agama})` : ""}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -189,18 +213,12 @@ export default function DaftarSKU({ userData }) {
                     <div className="flex items-center">
                       <AnimatePresence mode="wait">
                         {isVerified ? (
-                          <motion.div 
-                            initial={{ scale: 0 }} animate={{ scale: 1 }}
-                            className="flex items-center gap-1.5 bg-emerald-500 px-4 py-2 rounded-full shadow-lg shadow-emerald-500/20"
-                          >
+                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1.5 bg-emerald-500 px-4 py-2 rounded-full shadow-lg shadow-emerald-500/20">
                             <HiOutlineCheckCircle className="w-4 h-4 text-white" />
                             <span className="text-white text-[9px] font-black uppercase tracking-widest">Lulus</span>
                           </motion.div>
                         ) : isPending ? (
-                          <motion.div 
-                            initial={{ scale: 0 }} animate={{ scale: 1 }}
-                            className="flex items-center gap-1.5 bg-amber-500/20 px-4 py-2 rounded-full border border-amber-500/30 animate-pulse"
-                          >
+                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1.5 bg-amber-500/20 px-4 py-2 rounded-full border border-amber-500/30 animate-pulse">
                             <HiOutlineClock className="w-4 h-4 text-amber-500" />
                             <span className="text-amber-500 text-[9px] font-black uppercase tracking-widest">Antrean</span>
                           </motion.div>
@@ -208,11 +226,11 @@ export default function DaftarSKU({ userData }) {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            disabled={submitting === poin.nomor}
+                            disabled={submitting === poin.id}
                             onClick={() => handleAjukan(poin)}
                             className="bg-white text-[#020617] text-[9px] font-black px-5 py-2.5 rounded-2xl uppercase tracking-widest shadow-xl disabled:opacity-30"
                           >
-                            {submitting === poin.nomor ? "Sync..." : "Ajukan Ujian"}
+                            {submitting === poin.id ? "Sync..." : "Ajukan Ujian"}
                           </motion.button>
                         )}
                       </AnimatePresence>
@@ -233,20 +251,13 @@ export default function DaftarSKU({ userData }) {
         </div>
 
         {/* FOOTER */}
-        <div className="px-8 py-16 text-center border-t border-white/5 mt-auto">
+        <div className="px-8 py-16 text-center border-t border-white/5 mt-auto bg-slate-950/30">
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest leading-loose italic">
-            Developed by <span className="text-red-600">Fiqri Haikal</span> <br />
-            Level Up Your Scout Adventure! <br />
-            © 2026 — Laskar Bahari SMPN 1 Biau
+            Developed by <span className="text-red-600 font-bold">Fiqri Haikal</span> <br />
+            Navigator System — Navigasi App v1.2
           </p>
         </div>
       </div>
-
-      <style jsx>{`
-        .shadow-3xl {
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
-        }
-      `}</style>
     </div>
   );
 }

@@ -9,6 +9,9 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
+  increment,
+  arrayUnion,
+  addDoc
 } from "firebase/firestore";
 import { Link } from "react-router-dom";
 
@@ -43,21 +46,50 @@ export default function VerifikasiSKU() {
     return () => unsubscribe();
   }, [filterTingkat]);
 
-  const handleVerify = async (id, namaAnggota, nomorPoin) => {
-    if (!window.confirm(`Luluskan Poin ${nomorPoin} untuk ${namaAnggota}?`)) return;
+  const handleVerify = async (item) => {
+    // Destruktur data termasuk deskripsi_poin untuk verifikasi yang lebih detail
+    const { id, uid, nama_anggota, nomor_poin, tingkat, deskripsi_poin } = item;
+
+    // Fix bug: Menggunakan nomor_poin (bukan nomorPoin) dan menambah konteks materi
+    if (!window.confirm(`Luluskan Poin ${nomor_poin} (${deskripsi_poin.substring(0, 20)}...) untuk ${nama_anggota}?`)) return;
 
     setProcessingId(id);
     try {
+      // 1. UPDATE DOKUMEN SKU_PROGRESS
       const docRef = doc(db, "sku_progress", id);
       await updateDoc(docRef, {
         status: "verified",
         verifikator_nama: auth.currentUser?.displayName || "Pembina",
+        verifikator_id: auth.currentUser?.uid || "",
         tgl_verifikasi: serverTimestamp(),
       });
-      // Notifikasi sukses sederhana bisa ditambahkan di sini
+
+      // 2. UPDATE DOKUMEN USER ANGGOTA (Tambah XP & Catat History)
+      const userRef = doc(db, "users", uid);
+      await updateDoc(userRef, {
+        points: increment(50), 
+        energy: increment(5), // Bonus energi tambahan untuk anggota
+        attendanceLog: arrayUnion({
+          timestamp: new Date().toISOString(),
+          // Mencatat materi spesifik agar log anggota lebih informatif
+          activity: `Lulus SKU ${tingkat} No.${nomor_poin}: ${deskripsi_poin.substring(0, 30)}...`,
+          pointsEarned: 50,
+          type: "SKU_VERIFICATION"
+        })
+      });
+
+      // 3. AUTO-LOGGING (Audit Trail untuk Admin)
+      await addDoc(collection(db, "logs"), {
+        action: "Verifikasi SKU",
+        adminName: auth.currentUser?.displayName || "Pembina",
+        targetName: `${nama_anggota} - SKU ${tingkat} No.${nomor_poin}`,
+        reason: `Materi: ${deskripsi_poin}`,
+        timestamp: serverTimestamp(),
+      });
+
     } catch (error) {
       console.error("Gagal verifikasi:", error);
-      alert("Terjadi kesalahan saat verifikasi.");
+      alert("Terjadi kesalahan saat verifikasi sistem radar.");
     } finally {
       setProcessingId(null);
     }
@@ -78,8 +110,8 @@ export default function VerifikasiSKU() {
               <img src="https://cdn-icons-png.flaticon.com/128/271/271220.png" className="w-4 h-4 brightness-0 invert" alt="back" />
             </Link>
             <div>
-              <h1 className="text-lg font-black uppercase tracking-tighter">Verifikasi SKU</h1>
-              <p className="text-[9px] text-blue-300 font-bold uppercase tracking-[0.3em]">Antrean Pengujian</p>
+              <h1 className="text-lg font-black uppercase tracking-tighter leading-none">Verifikasi SKU</h1>
+              <p className="text-[9px] text-blue-300 font-bold uppercase tracking-[0.3em] mt-1">Otoritas Pengujian Bahari</p>
             </div>
           </div>
         </div>
@@ -107,13 +139,13 @@ export default function VerifikasiSKU() {
         <div className="px-6 mt-8 flex-1 overflow-y-auto">
           {loading ? (
             <div className="text-center py-20 animate-pulse font-black text-slate-300 uppercase text-[10px] tracking-widest">
-              Memuat Antrean...
+              Memantau Radar Antrean...
             </div>
           ) : requests.length === 0 ? (
             <div className="bg-white rounded-[2.5rem] p-12 text-center border-2 border-dashed border-slate-100 flex flex-col items-center">
               <img src="https://cdn-icons-png.flaticon.com/128/7486/7486744.png" className="w-10 h-10 opacity-20 mb-4" alt="empty" />
               <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic leading-relaxed">
-                Tidak ada pengajuan <br /> di tingkat {filterTingkat}
+                Radar Bersih. <br /> Tingkat {filterTingkat} Belum Ada Laporan.
               </p>
             </div>
           ) : (
@@ -125,20 +157,21 @@ export default function VerifikasiSKU() {
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center font-black text-blue-900 text-xs shadow-inner">
+                      <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center font-black text-blue-900 text-xs shadow-inner border border-blue-100">
                         {item.nomor_poin}
                       </div>
                       <div>
                         <h3 className="text-sm font-black text-slate-800 uppercase italic leading-none">
                           {item.nama_anggota}
                         </h3>
-                        <p className="text-[8px] text-slate-400 font-bold uppercase mt-1.5 tracking-widest">
+                        <p className="text-[8px] text-slate-400 font-bold uppercase mt-1.5 tracking-widest flex items-center gap-1">
+                          <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
                           {item.tgl_pengajuan?.toDate().toLocaleDateString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                     </div>
                     <button 
-                      onClick={() => handleVerify(item.id, item.nama_anggota, item.nomor_poin)}
+                      onClick={() => handleVerify(item)}
                       disabled={processingId === item.id}
                       className="bg-green-500 text-white p-3 rounded-2xl shadow-lg shadow-green-500/30 active:scale-90 transition-all disabled:opacity-50"
                     >
@@ -150,8 +183,12 @@ export default function VerifikasiSKU() {
                     </button>
                   </div>
 
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 shadow-inner">
-                    <p className="text-[10px] text-slate-600 font-bold leading-relaxed italic">
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 shadow-inner group">
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest block">Materi Uji:</span>
+                        <span className="text-[7px] font-black text-blue-500 uppercase">{item.kategori}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-600 font-bold leading-relaxed italic group-hover:text-blue-900 transition-colors">
                       "{item.deskripsi_poin}"
                     </p>
                   </div>
@@ -164,7 +201,7 @@ export default function VerifikasiSKU() {
         {/* FOOTER */}
         <footer className="mt-auto py-8 text-center bg-white border-t border-slate-50">
           <p className="text-[8px] text-slate-300 font-black uppercase tracking-[0.5em] italic">
-            Laskar Bahari Examiner System
+            Laskar Bahari Examiner System — v1.2
           </p>
         </footer>
       </div>
