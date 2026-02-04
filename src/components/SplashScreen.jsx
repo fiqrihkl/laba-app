@@ -26,7 +26,7 @@ export default function SplashScreen() {
             animate={{ y: [0, -5, 0] }}
             transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
             src="/logo/logo.png" 
-            className="w-20 h-20 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
+            className="w-38 h-38 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
             alt="Laskar Bahari Logo"
           />
         </motion.div>
