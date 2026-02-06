@@ -13,6 +13,7 @@ import { AnimatePresence } from "framer-motion";
 
 // --- IMPORT KONTEKS & UI PREMIUM ---
 import { ModalProvider } from "./context/ModalContext";
+import { ConfirmProvider } from "./pages/pembina/context/ConfirmContext"; // Import Baru
 import SplashScreen from "./components/SplashScreen";
 import PageLoader from "./components/PageLoader";
 
@@ -27,7 +28,7 @@ import AktivasiAkun from "./pages/auth/AktivasiAkun";
 // Anggota
 import AnggotaDashboard from "./pages/anggota/AnggotaDashboard";
 import Leaderboard from "./pages/anggota/Leaderboard";
-import ProfileAnggota from "./pages/anggota/Profile"; // Profil khusus Anggota
+import ProfileAnggota from "./pages/anggota/Profile"; 
 import Laporan from "./pages/anggota/Laporan";
 import Announcements from "./pages/anggota/Announcements";
 import DaftarSKU from "./pages/anggota/DaftarSKU";
@@ -47,7 +48,7 @@ import AdminHub from "./pages/pembina/AdminHub";
 import StatistikSKU from "./pages/pembina/StatistikSKU";
 import ExportPresensi from "./pages/pembina/ExportPresensi";
 import NotificationList from "./pages/pembina/NotificationList";
-import ProfilePembina from "./pages/pembina/Profile"; // Profil khusus Pembina/Admin
+import ProfilePembina from "./pages/pembina/Profile"; 
 
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -65,7 +66,6 @@ import InvestigasiSFH from "./pages/admin/InvestigasiSFH";
 const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
   const location = useLocation();
 
-  // DEBUG LOG: Memantau status setiap kali rute berubah
   console.log("[NAVIGASI DEBUG] Status:", { 
     path: location.pathname, 
     isLoading: loading, 
@@ -82,7 +82,6 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
       <Routes location={location} key={location.pathname}>
         <Route path="/aktivasi" element={<AktivasiAkun />} />
         
-        {/* LOGIC REDIRECT UTAMA */}
         <Route
           path="/"
           element={
@@ -111,7 +110,7 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
           }
         />
 
-        {/* --- AKSES ADMIN & PEMBINA (Fungsi Ganda) --- */}
+        {/* --- AKSES ADMIN & PEMBINA --- */}
         <Route path="/admin/verifikasi-tingkat" element={user && (role === "admin" || role === "pembina") ? <VerifikasiTingkat /> : <Navigate to="/" replace />} />
         <Route path="/pembina/verifikasi-sku" element={user && (role === "admin" || role === "pembina") ? <VerifikasiSKU /> : <Navigate to="/" replace />} />
         <Route path="/pembina/investigasi-sfh" element={user && (role === "admin" || role === "pembina") ? <InvestigasiSFH /> : <Navigate to="/" replace />} />
@@ -123,7 +122,6 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
         <Route path="/admin" element={user && role === "admin" ? <AdminDashboard /> : <Navigate to="/" replace />} />
         <Route path="/admin/logs" element={user && role === "admin" ? <AuditTrailLogs /> : <Navigate to="/" replace />} />
         <Route path="/admin/kta-editor" element={user && role === "admin" ? <KTAEditor /> : <Navigate to="/" replace />} />
-        
 
         {/* --- RUTE OPERASIONAL LAINNYA --- */}
         <Route path="/kelola-pengguna" element={user && (role === "admin" || role === "pembina") ? <KelolaPengguna /> : <Navigate to="/" replace />} />
@@ -150,7 +148,7 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
         <Route path="/announcements" element={user && role === "anggota" ? <Announcements /> : <Navigate to="/" replace />} />
         <Route path="/navi-chat" element={<NaviChat />} />
         
-        {/* --- RUTE PROFIL (DIBEDAKAN BERDASARKAN ROLE) --- */}
+        {/* --- RUTE PROFIL --- */}
         <Route 
           path="/profile" 
           element={
@@ -162,7 +160,6 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
           } 
         />
         
-        {/* RUTE BARU: PRINT PIAGAM */}
         <Route path="/print-piagam/:badgeKey" element={user && role === "anggota" ? <PrintPiagam /> : <Navigate to="/" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -228,33 +225,35 @@ function App() {
 
   return (
     <ModalProvider>
-      <AnimatePresence mode="wait">
-        {showSplash ? (
-          <SplashScreen key="splash" />
-        ) : (
-          <Router>
-            <div className="bg-[#020617] min-h-screen">
-              {user && role && (
-                <>
-                  <NotificationListener user={user} />
-                  <Navbar role={role} userData={userData} />
-                </>
-              )}
-              
-              <div className={user ? "pb-24 md:pt-20 md:pb-0" : ""}>
-                <AnimatedRoutes 
-                  key={loading ? "loading" : "content"} 
-                  user={user} 
-                  role={role} 
-                  userData={userData} 
-                  installPrompt={deferredPrompt}
-                  loading={loading}
-                />
+      <ConfirmProvider> {/* PEMBUNGKUS KONFIRMASI GLOBAL */}
+        <AnimatePresence mode="wait">
+          {showSplash ? (
+            <SplashScreen key="splash" />
+          ) : (
+            <Router>
+              <div className="bg-[#020617] min-h-screen">
+                {user && role && (
+                  <>
+                    <NotificationListener user={user} />
+                    <Navbar role={role} userData={userData} />
+                  </>
+                )}
+                
+                <div className={user ? "pb-24 md:pt-20 md:pb-0" : ""}>
+                  <AnimatedRoutes 
+                    key={loading ? "loading" : "content"} 
+                    user={user} 
+                    role={role} 
+                    userData={userData} 
+                    installPrompt={deferredPrompt}
+                    loading={loading}
+                  />
+                </div>
               </div>
-            </div>
-          </Router>
-        )}
-      </AnimatePresence>
+            </Router>
+          )}
+        </AnimatePresence>
+      </ConfirmProvider>
     </ModalProvider>
   );
 }

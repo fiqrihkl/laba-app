@@ -22,14 +22,14 @@ const CommandHeader = ({ pembinaData, presentCount, alertsCount, unreadCount }) 
                 </div>
               )}
             </div>
-            <div className="absolute -top-2 -left-2 bg-blue-500 text-[8px] font-black px-2 py-0.5 rounded-md uppercase border border-[#1e3a8a]">Captain</div>
+            <div className="absolute -top-2 -left-2 bg-blue-500 text-[8px] font-black px-2 py-0.5 rounded-md uppercase border border-[#1e3a8a]">Pembina</div>
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tighter uppercase leading-none text-white drop-shadow-lg">
               {pembinaData?.nama?.split(" ")[0] || "Komandan"}
             </h1>
             <p className="text-[9px] font-black text-blue-400 uppercase mt-2 tracking-widest flex items-center gap-1.5 leading-none">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_#10b981]"></span> Command Active
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_#10b981]"></span> Pembina Aktif
             </p>
           </div>
         </div>

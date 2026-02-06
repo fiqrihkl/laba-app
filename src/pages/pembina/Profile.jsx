@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { auth, db, storage } from "../../firebase"; 
+import { auth, db } from "../../firebase"; 
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   HiOutlineUser, 
-  HiOutlineBadgeCheck, 
-  HiOutlineLightningBolt, 
   HiOutlineClock,
   HiOutlineLogout,
-  HiOutlineShieldCheck,
   HiOutlineTrendingUp,
   HiOutlineTrendingDown,
   HiOutlineIdentification,
@@ -66,61 +62,39 @@ export default function Profile() {
     return () => unsubscribe();
   }, []);
 
-  // --- LOGIKA KOMPRESI & UPLOAD ANTI-ERROR ---
+  // --- LOGIKA UPLOAD BASE64 (BYPASS CORS) ---
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validasi tipe file
     if (!file.type.startsWith("image/")) {
       alert("Hanya file gambar yang diizinkan.");
       return;
     }
 
     setIsUploading(true);
-    const user = auth.currentUser;
 
-    try {
-      // 1. Jalankan proses kompresi asinkron
-      const compressedBlob = await compressImage(file);
-      
-      // 2. Buat referensi storage
-      const storageRef = ref(storage, `avatars/${user.uid}`);
-      
-      // 3. Eksekusi upload
-      const uploadResult = await uploadBytes(storageRef, compressedBlob);
-      console.log("Upload success:", uploadResult);
-      
-      // 4. Dapatkan URL permanen
-      const downloadURL = await getDownloadURL(storageRef);
-      
-      // 5. Update state lokal
-      setFormData(prev => ({ ...prev, photoURL: downloadURL }));
-      
-      alert("FOTO BERHASIL DIKOMPRES & DIUNGGAH.");
-    } catch (error) {
-      console.error("Upload error detail:", error);
-      alert(`GAGAL UPLOAD: ${error.message}`);
-    } finally {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    
+    reader.onerror = () => {
+      alert("Gagal membaca file.");
       setIsUploading(false);
-      // Reset input file agar bisa pilih file yang sama lagi
-      if (e.target) e.target.value = "";
-    }
-  };
+    };
 
-  // Helper Kompresi (Menghasilkan Blob untuk Storage)
-  const compressImage = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onerror = (error) => reject(error);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target.result;
-        img.onerror = (error) => reject(error);
-        img.onload = () => {
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      
+      img.onerror = () => {
+        alert("Gagal memproses gambar.");
+        setIsUploading(false);
+      };
+
+      img.onload = async () => {
+        try {
           const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 400; // Resolusi efisien untuk avatar
+          const MAX_WIDTH = 400; // Ukuran optimal untuk avatar agar Firestore tidak berat
           const scaleSize = MAX_WIDTH / img.width;
           
           canvas.width = MAX_WIDTH;
@@ -131,13 +105,26 @@ export default function Profile() {
           ctx.imageSmoothingQuality = "high";
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error("Gagal mengonversi gambar ke Blob."));
-          }, "image/jpeg", 0.7); // Kualitas 70% JPEG
-        };
+          // Konversi ke Base64 (JPEG 70% quality)
+          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+          
+          // Update ke Firestore langsung
+          const userRef = doc(db, "users", auth.currentUser.uid);
+          await updateDoc(userRef, { photoURL: compressedBase64 });
+
+          // Update state lokal
+          setFormData(prev => ({ ...prev, photoURL: compressedBase64 }));
+          
+          alert("FOTO IDENTITAS BERHASIL DISINKRONISASI.");
+        } catch (error) {
+          console.error("Upload error:", error);
+          alert("GAGAL MENYIMPAN FOTO KE DATABASE.");
+        } finally {
+          setIsUploading(false);
+          if (e.target) e.target.value = "";
+        }
       };
-    });
+    };
   };
 
   const handleUpdateProfile = async () => {
@@ -196,7 +183,6 @@ export default function Profile() {
         </header>
 
         <main className="px-6 space-y-6">
-          {/* PEMBINA DOSSIER CARD */}
           <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-5 space-y-4 backdrop-blur-md">
             <div className="flex items-center gap-4">
                <HiOutlineIdentification className="text-blue-500" size={20} />
@@ -249,13 +235,6 @@ export default function Profile() {
               )}
             </div>
           </section>
-
-          <div className="pt-4 space-y-3 pb-12">
-            <button onClick={handleLogout} className="w-full border border-dashed border-red-900/30 p-4 rounded-2xl flex items-center justify-center gap-3 text-red-500/60 hover:text-red-500 hover:bg-red-500/5 transition-all group">
-              <HiOutlineLogout size={20} className="group-hover:translate-x-1 transition-transform" />
-              <p className="text-[10px] font-black uppercase tracking-widest">Logout Sesi Navigasi</p>
-            </button>
-          </div>
         </main>
 
         <AnimatePresence>
@@ -271,10 +250,17 @@ export default function Profile() {
                   <div className="space-y-2">
                     <label className="text-[8px] font-black text-slate-500 uppercase px-1">Identity Image</label>
                     <div onClick={() => !isUploading && fileInputRef.current.click()} className="w-full bg-black border border-dashed border-white/10 rounded-xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-500/50 transition-all">
-                      {isUploading ? <div className="w-5 h-5 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin" /> : <><HiOutlineUpload className="text-blue-500" size={24} /><p className="text-[8px] font-black text-slate-500 uppercase">Change Photo</p></>}
+                      {isUploading ? (
+                        <div className="w-5 h-5 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <HiOutlineUpload className="text-blue-500" size={24} />
+                          <p className="text-[8px] font-black text-slate-500 uppercase">Change Photo</p>
+                        </>
+                      )}
                     </div>
                     <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleFileUpload} />
-                    {isUploading && <p className="text-[7px] text-blue-500 font-bold uppercase text-center animate-pulse">Encrypting Data...</p>}
+                    {isUploading && <p className="text-[7px] text-blue-500 font-bold uppercase text-center animate-pulse mt-2">Processing Data...</p>}
                   </div>
 
                   <div className="space-y-4 pt-2">
@@ -298,7 +284,11 @@ export default function Profile() {
                   </div>
 
                   <div className="pt-6">
-                    <button onClick={handleUpdateProfile} disabled={isUploading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20 disabled:opacity-50 transition-all">
+                    <button 
+                      onClick={handleUpdateProfile} 
+                      disabled={isUploading} 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20 disabled:opacity-50 transition-all"
+                    >
                       {isUploading ? "PROCESS DATA..." : "Save Dossier Changes"}
                     </button>
                   </div>
@@ -309,7 +299,7 @@ export default function Profile() {
         </AnimatePresence>
 
         <footer className="mt-auto py-8 text-center opacity-30 mx-6 border-t border-white/5">
-           <p className="text-[8px] font-bold uppercase tracking-[0.5em]">Identity Protocol v2.7 — NAVIGASI</p>
+            <p className="text-[8px] font-bold uppercase tracking-[0.5em]">Identity Protocol v2.7 — NAVIGASI</p>
         </footer>
       </div>
     </div>

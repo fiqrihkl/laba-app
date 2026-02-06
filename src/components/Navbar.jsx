@@ -18,7 +18,7 @@ import {
   HiLightningBolt,
   HiExclamation,
   HiX,
-  HiOutlineChartBar
+  HiOutlineDocumentDownload
 } from "react-icons/hi";
 
 export default function Navbar({ role, userData }) {
@@ -57,11 +57,12 @@ export default function Navbar({ role, userData }) {
       { name: "Feed", path: "/pembina/notifications", icon: <HiOutlineBell size={26} /> },
       { name: "Profil", path: "/profile", isAvatar: true },
     ],
+    // --- OPTIMASI MENU PEMBINA ---
     pembina: [
       { name: "Home", path: "/pembina", icon: <HiOutlineHome size={26} /> },
       { name: "Scanner", path: "/pembina/scanner", icon: <HiOutlineQrcode size={26} /> },
       { name: "Approval", path: "/pembina/verifikasi-sku", icon: <HiOutlineAcademicCap size={26} /> },
-      { name: "Feed", path: "/pembina/notifications", icon: <HiOutlineBell size={26} /> },
+      { name: "Rekap", path: "/pembina/export-presensi", icon: <HiOutlineDocumentDownload size={26} /> },
       { name: "Profil", path: "/profile", isAvatar: true },
     ],
     anggota: [

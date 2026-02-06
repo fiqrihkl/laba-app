@@ -13,6 +13,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { motion, AnimatePresence } from "framer-motion";
 
+// --- IMPORT KONTEKS KONFIRMASI (Path disesuaikan ke folder lokal) ---
+import { useConfirm } from "./context/ConfirmContext";
+
 // --- HOOK LOGIKA ---
 import { usePembinaDashboard } from "../../hooks/usePembinaDashboard";
 
@@ -27,11 +30,12 @@ import {
   HiOutlineLightningBolt, HiOutlineStatusOnline,
   HiOutlineAcademicCap, HiOutlineShieldExclamation,
   HiOutlineShieldCheck, HiOutlineTrendingUp, HiOutlineTrendingDown,
-  HiOutlineSearch
+  HiOutlineSearch, HiOutlineDocumentDownload
 } from "react-icons/hi";
 
 export default function PembinaDashboard() {
   const navigate = useNavigate();
+  const confirm = useConfirm(); // Inisialisasi Hook Konfirmasi
   const [activeTab, setActiveTab] = useState("command"); 
   
   // State untuk XP Management
@@ -42,53 +46,66 @@ export default function PembinaDashboard() {
   
   const { pembinaData, presentUsers, stats, alerts, loading, unreadCount } = usePembinaDashboard();
 
+  // --- FUNGSI LOGOUT DENGAN MODAL KONFIRMASI ---
   const handleLogout = () => {
-    if (window.confirm("AKHIRI SESI MANAJEMEN PEMBINA?")) {
-      signOut(auth).then(() => navigate("/"));
-    }
+    confirm({
+      title: "Terminate Session?",
+      message: "AKHIRI SESI MANAJEMEN PEMBINA DAN KELUAR DARI SISTEM NAVIGASI?",
+      type: "danger",
+      onConfirm: () => {
+        signOut(auth).then(() => navigate("/"));
+      }
+    });
   };
 
-  // --- FUNGSI EKSEKUSI PENYESUAIAN XP ---
+  // --- FUNGSI EKSEKUSI PENYESUAIAN XP DENGAN MODAL KONFIRMASI ---
   const handleUpdateXP = async () => {
     if (!selectedUserXP || !xpValue || !xpReason) {
       alert("LENGKAPI POIN DAN ALASAN!");
       return;
     }
 
-    const pointsToUpdate = xpType === "addition" ? parseInt(xpValue) : -parseInt(xpValue);
-    const currentUser = auth.currentUser;
+    confirm({
+      title: "Execute XP Command?",
+      message: `KONFIRMASI PERUBAHAN ${xpValue} XP UNTUK ${selectedUserXP.nama} DENGAN ALASAN: ${xpReason}?`,
+      type: "blue",
+      onConfirm: async () => {
+        const pointsToUpdate = xpType === "addition" ? parseInt(xpValue) : -parseInt(xpValue);
+        const currentUser = auth.currentUser;
 
-    try {
-      const userRef = doc(db, "users", selectedUserXP.id);
-      
-      // 1. Update Dokumen User & Tambahkan Log Pribadi
-      await updateDoc(userRef, {
-        points: increment(pointsToUpdate),
-        attendanceLog: arrayUnion({
-          timestamp: new Date().toISOString(),
-          activity: xpReason,
-          pointsEarned: pointsToUpdate,
-          isSeen: false 
-        })
-      });
+        try {
+          const userRef = doc(db, "users", selectedUserXP.id);
+          
+          // 1. Update Dokumen User & Tambahkan Log Pribadi
+          await updateDoc(userRef, {
+            points: increment(pointsToUpdate),
+            attendanceLog: arrayUnion({
+              timestamp: new Date().toISOString(),
+              activity: xpReason,
+              pointsEarned: pointsToUpdate,
+              isSeen: false 
+            })
+          });
 
-      // 2. Logging Audit Trail Global
-      await addDoc(collection(db, "logs"), {
-        action: "PENYESUAIAN XP",
-        adminName: currentUser?.displayName || "PEMBINA",
-        targetName: selectedUserXP.nama,
-        targetId: selectedUserXP.id,
-        reason: `${xpReason} (${pointsToUpdate > 0 ? '+' : ''}${pointsToUpdate} XP)`,
-        timestamp: serverTimestamp(),
-      });
+          // 2. Logging Audit Trail Global
+          await addDoc(collection(db, "logs"), {
+            action: "PENYESUAIAN XP",
+            adminName: currentUser?.displayName || "PEMBINA",
+            targetName: selectedUserXP.nama,
+            targetId: selectedUserXP.id,
+            reason: `${xpReason} (${pointsToUpdate > 0 ? '+' : ''}${pointsToUpdate} XP)`,
+            timestamp: serverTimestamp(),
+          });
 
-      setSelectedUserXP(null);
-      setXpValue("");
-      setXpReason("");
-      alert(`BERHASIL MEMPERBARUI XP ${selectedUserXP.nama}.`);
-    } catch (e) { 
-      alert("GAGAL SINKRONISASI DATABASE.");
-    }
+          setSelectedUserXP(null);
+          setXpValue("");
+          setXpReason("");
+          // Note: Konfirmasi berhasil sudah ditangani oleh penutupan modal otomatis
+        } catch (e) { 
+          alert("GAGAL SINKRONISASI DATABASE.");
+        }
+      }
+    });
   };
 
   if (loading) return (
@@ -212,22 +229,45 @@ export default function PembinaDashboard() {
                   </Link>
                 </div>
               </div>
+
+              {/* ADMINISTRASI & LAPORAN */}
+              <div className="space-y-4">
+                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Administrasi & Laporan</h2>
+                <div className="grid grid-cols-1 gap-3">
+                  <Link 
+                    to="/pembina/export-presensi" 
+                    className="bg-blue-600/10 border border-blue-500/20 p-5 rounded-xl flex items-center justify-between hover:bg-blue-500/20 transition-all group"
+                  >
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                        <HiOutlineDocumentDownload size={24} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-blue-200 uppercase tracking-tight">Rekap Presensi Anggota</p>
+                        <p className="text-[9px] text-blue-500/70 uppercase font-black tracking-widest italic mt-1">Generate Laporan PDF Bulanan</p>
+                      </div>
+                    </div>
+                    <HiOutlineChevronRight className="text-blue-900" />
+                  </Link>
+                </div>
+              </div>
+
               {/* XP SYSTEM MENU */}
               <div className="space-y-4">
                 <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">XP System</h2>
                 <div className="grid grid-cols-1 gap-3">
                   <button 
-                    onClick={() => navigate("/admin/validasi-poin")} // Gunakan data user untuk mencari
-                    className="bg-blue-600/10 border border-blue-500/20 p-5 rounded-xl flex items-center justify-between hover:bg-blue-500/20 transition-all"
+                    onClick={() => navigate("/admin/validasi-poin")} 
+                    className="bg-slate-900 border border-white/5 p-5 rounded-xl flex items-center justify-between hover:bg-slate-800 transition-all"
                   >
                     <div className="flex items-center gap-4 text-left">
                       <HiOutlineTrendingUp size={24} className="text-blue-500" />
                       <div>
                         <p className="text-xs font-black text-blue-200 uppercase tracking-tight">Reward & Punishment</p>
-                        <p className="text-[9px] text-blue-500/70 uppercase font-black tracking-widest italic leading-none mt-1">Manual XP Adjustment</p>
+                        <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest italic mt-1">Manual XP Adjustment</p>
                       </div>
                     </div>
-                    <HiOutlineChevronRight className="text-blue-900" />
+                    <HiOutlineChevronRight className="text-slate-700" />
                   </button>
                 </div>
               </div>
@@ -241,22 +281,22 @@ export default function PembinaDashboard() {
                 </div>
               </div>
 
-              {/* Capaian SKU */}
+              {/* Syarat Kecakapan Umum */}
               <div className="space-y-4">
                 <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Syarat Kecakapan Umum (SKU)</h2>
                 <div className="grid grid-cols-1 gap-3">
                   <button 
-                    onClick={() => navigate("/pembina/statistik-sku")} // Gunakan data user untuk mencari
-                    className="bg-blue-600/10 border border-blue-500/20 p-5 rounded-xl flex items-center justify-between hover:bg-blue-500/20 transition-all"
+                    onClick={() => navigate("/pembina/statistik-sku")} 
+                    className="bg-slate-900 border border-white/5 p-5 rounded-xl flex items-center justify-between hover:bg-slate-800 transition-all"
                   >
                     <div className="flex items-center gap-4 text-left">
-                      <HiOutlineTrendingUp size={24} className="text-blue-500" />
+                      <HiOutlineChartPie size={24} className="text-purple-500" />
                       <div>
-                        <p className="text-xs font-black text-blue-200 uppercase tracking-tight">Capaian SKU</p>
-                        <p className="text-[9px] text-blue-500/70 uppercase font-black tracking-widest italic leading-none mt-1">Capaian SKU Pasukan</p>
+                        <p className="text-xs font-black text-slate-200 uppercase tracking-tight">Analisis Capaian SKU</p>
+                        <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest italic mt-1">Capaian SKU Pasukan</p>
                       </div>
                     </div>
-                    <HiOutlineChevronRight className="text-blue-900" />
+                    <HiOutlineChevronRight className="text-slate-700" />
                   </button>
                 </div>
               </div>
@@ -271,7 +311,7 @@ export default function PembinaDashboard() {
           </button>
         </div>
 
-        {/* --- MODAL PENYESUAIAN XP (ENHANCED) --- */}
+        {/* --- MODAL PENYESUAIAN XP (INTERNAL FORM) --- */}
         <AnimatePresence>
           {selectedUserXP && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[3000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-sm">

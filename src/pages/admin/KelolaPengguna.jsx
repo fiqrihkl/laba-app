@@ -13,6 +13,9 @@ import {
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
+// --- IMPORT KONTEKS KONFIRMASI (Path disesuaikan ke folder lokal pembina) ---
+import { useConfirm } from "../pembina/context/ConfirmContext";
+
 // --- ICONS ---
 import { 
   HiOutlineUserAdd, 
@@ -29,6 +32,7 @@ import {
 
 export default function KelolaPengguna() {
   const navigate = useNavigate();
+  const confirm = useConfirm(); // Inisialisasi Hook Konfirmasi
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -83,6 +87,9 @@ export default function KelolaPengguna() {
       setGeneratedCode(activationCode);
       setShowAddModal(false);
       setShowResultModal(true);
+      // Reset Form
+      setNewUserName("");
+      setNewUserNTA("");
     } catch (error) {
       alert("Gagal sinkronisasi database.");
     }
@@ -96,12 +103,22 @@ export default function KelolaPengguna() {
     } catch (err) { console.error(err); }
   };
 
-  const deleteUser = async (userId) => {
-    if (window.confirm("Hapus personel secara permanen?")) {
-      try {
-        await deleteDoc(doc(db, "users", userId));
-      } catch (error) { alert("Gagal menghapus."); }
-    }
+  // --- FUNGSI HAPUS DENGAN MODAL KONFIRMASI CUSTOM ---
+  const deleteUser = async (user) => {
+    confirm({
+      title: "Hapus Personel?",
+      message: `TINDAKAN INI AKAN MENGHAPUS DATA ${user.nama.toUpperCase()} SECARA PERMANEN DARI DATABASE LASKAR.`,
+      confirmText: "Hapus Permanen",
+      cancelText: "Batalkan",
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, "users", user.id));
+        } catch (error) { 
+          alert("Gagal menghapus data."); 
+        }
+      }
+    });
   };
 
   const filteredUsers = users.filter(
@@ -122,8 +139,8 @@ export default function KelolaPengguna() {
               <HiOutlineChevronLeft size={24} />
             </button>
             <div>
-              <h1 className="text-sm font-bold uppercase tracking-widest">Database Personel</h1>
-              <p className="text-[9px] text-blue-500 font-bold uppercase tracking-tighter">Manajemen Master Data</p>
+              <h1 className="text-sm font-bold uppercase tracking-widest leading-none">Database Personel</h1>
+              <p className="text-[9px] text-blue-500 font-bold uppercase tracking-tighter mt-1">Manajemen Master Data</p>
             </div>
           </div>
           <button 
@@ -136,7 +153,7 @@ export default function KelolaPengguna() {
 
         {/* SEARCH BAR */}
         <div className="p-6">
-          <div className="bg-slate-900 border border-white/5 rounded-xl flex items-center px-4 focus-within:border-blue-500/50 transition-all">
+          <div className="bg-slate-900 border border-white/5 rounded-2xl flex items-center px-4 focus-within:border-blue-500/50 transition-all">
             <HiOutlineSearch className="text-slate-500" />
             <input 
               type="text" 
@@ -180,7 +197,7 @@ export default function KelolaPengguna() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => deleteUser(u.id)} className="p-2 text-slate-600 hover:text-red-500 transition-colors">
+                  <button onClick={() => deleteUser(u)} className="p-2 text-slate-600 hover:text-red-500 transition-colors">
                     <HiOutlineTrash size={18} />
                   </button>
                 </div>
