@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { db } from "../../firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { 
   HiOutlineChevronLeft, 
   HiOutlineChartPie, 
@@ -16,7 +17,7 @@ export default function StatistikSKU() {
     Ramu: 0,
     Rakit: 0,
     Terap: 0,
-    "Belum Ada Tingkat": 0 // Mengganti label Laskar
+    "Belum Ada Tingkat": 0 
   });
   const [totalAnggota, setTotalAnggota] = useState(0);
 
@@ -24,18 +25,15 @@ export default function StatistikSKU() {
     const q = query(collection(db, "users"), where("role", "==", "anggota"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Inisialisasi ulang penghitung
       const counts = { Ramu: 0, Rakit: 0, Terap: 0, "Belum Ada Tingkat": 0 };
       
       snapshot.forEach((doc) => {
         const data = doc.data();
-        // Logika: Jika field 'tingkat' kosong, null, atau berisi "Laskar", masukkan ke "Belum Ada Tingkat"
         const tingkat = (data.tingkat && data.tingkat !== "Laskar") ? data.tingkat : "Belum Ada Tingkat";
         
         if (counts.hasOwnProperty(tingkat)) {
           counts[tingkat]++;
         } else {
-          // Fallback jika ada data tingkat di luar kategori utama
           counts["Belum Ada Tingkat"]++;
         }
       });
@@ -54,93 +52,115 @@ export default function StatistikSKU() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 italic">
-      <div className="text-center font-black text-blue-900 animate-pulse uppercase text-[10px] tracking-widest">
-        Mengkalkulasi Data...
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617] italic">
+      <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin mb-4" />
+      <div className="text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">
+        Sinkronisasi Data Intelijen...
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24 italic font-medium">
-      {/* HEADER */}
-      <div className="bg-blue-900 pt-12 pb-16 px-8 rounded-b-[3.5rem] text-white relative shadow-xl">
-        <div className="flex items-center gap-5 relative z-10">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 active:scale-90 transition-all"
-          >
-            <HiOutlineChevronLeft className="w-5 h-5 text-white" />
-          </button>
-          <div>
-            <h1 className="text-lg font-black uppercase tracking-tighter">Statistik SKU</h1>
-            <p className="text-[9px] text-blue-200 font-bold uppercase tracking-[0.3em]">Capaian Tingkatan Anggota</p>
-          </div>
-        </div>
-      </div>
-
-      {/* RINGKASAN TOTAL */}
-      <div className="px-6 -mt-8 relative z-20">
-        <div className="bg-white p-6 rounded-[2.5rem] shadow-lg border border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
-              <HiOutlineUserGroup className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-[8px] font-black text-slate-400 uppercase">Total Populasi</p>
-              <p className="text-xl font-black text-slate-800">{totalAnggota} Anggota</p>
-            </div>
-          </div>
-          <HiOutlineTrendingUp className="w-8 h-8 text-green-500 opacity-20" />
-        </div>
-      </div>
-
-      {/* DETAIL PER TINGKAT */}
-      <div className="px-6 mt-8 space-y-4">
-        <h2 className="px-4 font-black text-[10px] text-slate-400 uppercase tracking-widest">Sebaran Tingkatan</h2>
+    <div className="min-h-screen bg-[#020617] text-slate-200 pb-24 font-sans italic selection:bg-blue-900">
+      <div className="max-w-md mx-auto min-h-screen flex flex-col border-x border-white/5 bg-[#020617]">
         
-        {Object.entries(tingkatStats).map(([label, count]) => (
-          <div key={label} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm transition-all hover:shadow-md">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full ${
-                  label === 'Ramu' ? 'bg-green-500' : 
-                  label === 'Rakit' ? 'bg-blue-500' : 
-                  label === 'Terap' ? 'bg-red-500' : 'bg-slate-300'
-                }`} />
-                <span className="text-xs font-black uppercase text-slate-700 tracking-tight">
-                  {label === "Belum Ada Tingkat" ? label : `Tingkat ${label}`}
+        {/* HEADER */}
+        <header className="p-6 pt-12 flex items-center justify-between border-b border-white/5 bg-slate-900/20 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] pointer-events-none" />
+          <div className="flex items-center gap-4 relative z-10">
+            <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+              <HiOutlineChevronLeft size={24} />
+            </button>
+            <div>
+              <h1 className="text-sm font-black uppercase tracking-widest leading-none">Analisis SKU</h1>
+              <p className="text-[9px] text-blue-500 font-bold uppercase tracking-tighter mt-1">Status Capaian Pasukan</p>
+            </div>
+          </div>
+          <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20 shadow-lg relative z-10">
+            <HiOutlineChartPie className="w-5 h-5 text-blue-500" />
+          </div>
+        </header>
+
+        {/* RINGKASAN POPULASI */}
+        <div className="p-6 -mt-8 relative z-20">
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="bg-slate-900 border border-white/10 p-6 rounded-[2.5rem] shadow-2xl flex items-center justify-between overflow-hidden relative"
+          >
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-14 h-14 bg-blue-600/20 rounded-[1.5rem] flex items-center justify-center border border-blue-500/20">
+                <HiOutlineUserGroup size={28} className="text-blue-500" />
+              </div>
+              <div>
+                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Total Populasi Laskar</p>
+                <p className="text-2xl font-black text-white tracking-tighter">{totalAnggota} Anggota</p>
+              </div>
+            </div>
+            <HiOutlineTrendingUp size={48} className="text-emerald-500 opacity-10 absolute -right-2 -bottom-2" />
+          </motion.div>
+        </div>
+
+        {/* DETAIL PER TINGKAT */}
+        <main className="flex-1 px-6 mt-4 space-y-4 pb-10 overflow-y-auto custom-scroll">
+          <h2 className="px-1 font-black text-[10px] text-slate-500 uppercase tracking-[0.3em] italic mb-2">Sebaran Tingkatan Unit</h2>
+          
+          {Object.entries(tingkatStats).map(([label, count], index) => (
+            <motion.div 
+              key={label}
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: index * 0.1 }}
+              className="bg-slate-900/50 border border-white/5 p-5 rounded-[2rem] hover:border-blue-500/30 transition-all shadow-xl"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)] ${
+                    label === 'Ramu' ? 'bg-emerald-500 shadow-emerald-500/20' : 
+                    label === 'Rakit' ? 'bg-blue-500 shadow-blue-500/20' : 
+                    label === 'Terap' ? 'bg-red-500 shadow-red-500/20' : 'bg-slate-600'
+                  }`} />
+                  <span className="text-[10px] font-black uppercase text-slate-200 tracking-wider">
+                    {label === "Belum Ada Tingkat" ? label : `Tingkat ${label}`}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-lg">
+                    {count} Jiwa
+                  </span>
+                </div>
+              </div>
+              
+              {/* PROGRESS METER */}
+              <div className="relative w-full bg-black/40 h-3 rounded-full overflow-hidden border border-white/5 p-[2px]">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${calculatePercentage(count)}%` }}
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  className={`h-full rounded-full ${
+                    label === 'Ramu' ? 'bg-emerald-500' : 
+                    label === 'Rakit' ? 'bg-blue-500' : 
+                    label === 'Terap' ? 'bg-red-500' : 'bg-slate-600'
+                  }`}
+                />
+              </div>
+
+              <div className="flex justify-between items-center mt-3 px-1">
+                <span className="text-[7px] text-slate-600 font-black uppercase tracking-tighter">Status Operasional</span>
+                <span className="text-[9px] text-slate-400 font-black italic uppercase">
+                  {calculatePercentage(count)}% Kapasitas Unit
                 </span>
               </div>
-              <span className="text-[10px] font-black text-blue-900 bg-blue-50 px-3 py-1 rounded-full">
-                {count} Jiwa
-              </span>
-            </div>
-            
-            {/* Progress Bar Visual */}
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-              <div 
-                className={`h-full transition-all duration-1000 ${
-                  label === 'Ramu' ? 'bg-green-500' : 
-                  label === 'Rakit' ? 'bg-blue-500' : 
-                  label === 'Terap' ? 'bg-red-500' : 'bg-slate-400'
-                }`}
-                style={{ width: `${calculatePercentage(count)}%` }}
-              />
-            </div>
-            <p className="text-[8px] text-right mt-2 text-slate-400 font-bold uppercase">
-              {calculatePercentage(count)}% Dari Total Anggota
-            </p>
-          </div>
-        ))}
-      </div>
+            </motion.div>
+          ))}
+        </main>
 
-      {/* FOOTER */}
-      <div className="mt-10 px-10 text-center opacity-30">
-        <HiOutlineChartPie className="w-10 h-10 mx-auto mb-2 text-slate-400" />
-        <p className="text-[8px] font-black uppercase tracking-widest leading-relaxed">
-          Data diperbarui secara real-time <br /> berdasarkan status verifikasi tingkat
-        </p>
+        <footer className="mt-auto p-8 text-center border-t border-white/5 bg-slate-900/10">
+          <HiOutlineChartPie className="w-8 h-8 mx-auto mb-3 text-slate-700" />
+          <p className="text-[8px] text-slate-600 font-black uppercase tracking-[0.5em] leading-relaxed italic">
+            Radar Navigasi Terhubung <br /> Sinkronisasi Real-Time v4.2
+          </p>
+        </footer>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { db, auth } from "../../firebase"; // Pastikan auth diimport
+import { db, auth } from "../../firebase";
 import {
   collection,
   onSnapshot,
@@ -12,10 +12,23 @@ import {
   serverTimestamp,
   arrayUnion,
 } from "firebase/firestore";
-import { Link } from "react-router-dom";
-import { HiOutlineChevronLeft, HiOutlineSearch, HiOutlineTrendingUp } from "react-icons/hi";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useConfirm } from "../pembina/context/ConfirmContext";
+
+// --- ICONS ---
+import { 
+  HiOutlineChevronLeft, 
+  HiOutlineSearch, 
+  HiOutlineTrendingUp, 
+  HiOutlineTrendingDown,
+  HiOutlineX,
+  HiOutlineShieldCheck
+} from "react-icons/hi";
 
 export default function ValidasiPoin() {
+  const navigate = useNavigate();
+  const confirm = useConfirm();
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -37,52 +50,55 @@ export default function ValidasiPoin() {
     return () => unsubscribe();
   }, []);
 
-  // --- Fungsi Penyesuaian XP (Validasi) ---
   const handleAdjustXP = async (e) => {
     e.preventDefault();
     if (!xpAmount || !reason) return alert("Jumlah XP dan Alasan wajib diisi!");
 
-    setIsProcessing(true);
-    const amount = parseInt(xpAmount);
-    const now = new Date().toISOString();
-    const currentUser = auth.currentUser;
+    confirm({
+      title: "Konfirmasi Poin?",
+      message: `Tindakan ini akan memvalidasi ${xpAmount} XP untuk ${selectedUser.nama.toUpperCase()}. Lanjutkan?`,
+      confirmText: "Eksekusi",
+      cancelText: "Batal",
+      type: parseInt(xpAmount) >= 0 ? "blue" : "danger",
+      onConfirm: async () => {
+        setIsProcessing(true);
+        const amount = parseInt(xpAmount);
+        const now = new Date().toISOString();
+        const currentUser = auth.currentUser;
 
-    try {
-      const userRef = doc(db, "users", selectedUser.id);
+        try {
+          const userRef = doc(db, "users", selectedUser.id);
 
-      // 1. Update Poin User DAN Tambahkan ke array attendanceLog untuk Riwayat Anggota
-      await updateDoc(userRef, {
-        points: increment(amount),
-        attendanceLog: arrayUnion({
-          timestamp: now,
-          activity: reason, 
-          pointsEarned: amount, 
-          type: "MANUAL_ADJUSTMENT" 
-        })
-      });
+          await updateDoc(userRef, {
+            points: increment(amount),
+            attendanceLog: arrayUnion({
+              timestamp: now,
+              activity: reason, 
+              pointsEarned: amount, 
+              type: "MANUAL_ADJUSTMENT" 
+            })
+          });
 
-      // 2. Catat ke Log Keamanan Internal Admin (Audit Trail)
-      await addDoc(collection(db, "logs"), {
-        action: "Penyesuaian XP",
-        targetName: selectedUser.nama,
-        targetId: selectedUser.id,
-        amount: amount,
-        reason: reason,
-        adminName: currentUser?.displayName || "Administrator", // Nama dinamis
-        timestamp: serverTimestamp(),
-      });
+          await addDoc(collection(db, "logs"), {
+            action: "Penyesuaian XP",
+            targetName: selectedUser.nama,
+            targetId: selectedUser.id,
+            amount: amount,
+            reason: reason,
+            adminName: currentUser?.displayName || "Pembina",
+            timestamp: serverTimestamp(),
+          });
 
-      alert(`BERHASIL!\n${amount} XP telah diaplikasikan ke akun ${selectedUser.nama}\nAudit log telah dicatat.`);
-      
-      setSelectedUser(null);
-      setXpAmount("");
-      setReason("");
-    } catch (error) {
-      console.error(error);
-      alert("Gagal memproses validasi poin. Error: " + error.message);
-    } finally {
-      setIsProcessing(false);
-    }
+          setSelectedUser(null);
+          setXpAmount("");
+          setReason("");
+        } catch (error) {
+          alert("Gagal memproses validasi poin.");
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    });
   };
 
   const filteredUsers = users.filter(
@@ -92,137 +108,173 @@ export default function ValidasiPoin() {
   );
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 italic">
-      <div className="text-center font-black text-green-600 animate-pulse uppercase text-[10px] tracking-widest">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617] italic">
+      <div className="w-8 h-8 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin mb-4" />
+      <div className="text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">
         Sinkronisasi Data Otoritas...
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex justify-center pb-24 text-slate-900 italic font-medium">
-      <div className="w-full max-w-md bg-white min-h-screen shadow-2xl flex flex-col relative overflow-hidden border-x border-slate-100">
+    <div className="min-h-screen bg-[#020617] text-slate-200 pb-24 font-sans italic selection:bg-blue-900">
+      <div className="max-w-md mx-auto min-h-screen flex flex-col border-x border-white/5 bg-[#020617]">
         
         {/* HEADER */}
-        <div className="bg-gradient-to-br from-green-600 to-teal-700 pt-12 pb-16 px-8 rounded-b-[3.5rem] relative overflow-hidden text-white shadow-xl">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-
-          <div className="flex justify-between items-center relative z-10">
-            <div className="flex items-center gap-4">
-              <Link to="/admin" className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 active:scale-90 transition">
-                <HiOutlineChevronLeft className="w-5 h-5 text-white" />
-              </Link>
-              <div>
-                <h1 className="text-xl font-black tracking-tighter uppercase leading-none italic">Validasi XP</h1>
-                <p className="text-green-100 text-[9px] font-bold uppercase tracking-widest mt-1.5 opacity-80 flex items-center gap-1">
-                   <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> Otoritas Poin
-                </p>
-              </div>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center border border-white/30 shadow-lg">
-              <HiOutlineTrendingUp className="w-6 h-6 text-white" />
+        <header className="p-6 pt-12 flex items-center justify-between border-b border-white/5 bg-slate-900/20 relative">
+          <div className="flex items-center gap-4 relative z-10">
+            <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+              <HiOutlineChevronLeft size={24} />
+            </button>
+            <div>
+              <h1 className="text-sm font-black uppercase tracking-widest leading-none">Otoritas Poin</h1>
+              <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-tighter mt-1">Validasi XP Manual</p>
             </div>
           </div>
-        </div>
+          <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20 shadow-lg relative z-10">
+            <HiOutlineShieldCheck className="w-5 h-5 text-emerald-500" />
+          </div>
+        </header>
 
         {/* SEARCH BAR */}
-        <div className="px-6 -mt-8 relative z-20">
-          <div className="bg-white rounded-[2rem] p-2 shadow-xl border border-slate-100 flex items-center group transition-all focus-within:ring-4 focus-within:ring-green-600/5">
-            <div className="pl-5 opacity-30 group-focus-within:opacity-100 transition-opacity">
-              <HiOutlineSearch className="w-4 h-4 text-slate-800" />
-            </div>
+        <div className="p-6">
+          <div className="bg-slate-900 border border-white/5 rounded-2xl flex items-center px-4 focus-within:border-emerald-500/50 transition-all shadow-inner">
+            <HiOutlineSearch className="text-slate-500" />
             <input
               type="text"
-              placeholder="Cari nama anggota..."
-              className="w-full bg-transparent border-none p-4 text-xs font-black text-slate-800 outline-none italic uppercase tracking-widest"
+              placeholder="CARI NAMA ANGGOTA..."
+              className="w-full bg-transparent p-4 text-xs font-bold outline-none text-white placeholder:text-slate-700 uppercase"
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
 
         {/* USER LIST */}
-        <div className="flex-1 px-6 mt-8">
-          <h2 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 px-4 italic">
-            Daftar Anggota Aktif ({filteredUsers.length})
-          </h2>
-
-          <div className="space-y-4 pb-12">
-            {filteredUsers.length === 0 ? (
-              <div className="text-center py-20 opacity-20 uppercase font-black text-[10px] tracking-widest">Data Tidak Ditemukan</div>
-            ) : (
-              filteredUsers.map((u) => (
-                <div key={u.id} className="bg-white border border-slate-100 p-5 rounded-[2.5rem] flex justify-between items-center hover:shadow-md transition-all group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center font-black text-blue-900 italic border border-slate-100 group-hover:bg-green-600 group-hover:text-white transition-all shadow-inner uppercase">
-                      {u.nama.substring(0, 1)}
-                    </div>
-                    <div>
-                      <h3 className="font-black text-slate-800 text-[10px] uppercase tracking-tight">{u.nama}</h3>
-                      <p className="text-[8px] text-slate-400 font-black uppercase mt-1 tracking-widest">{u.tingkat || "Penggalang"}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-xs font-black text-green-600 tracking-tighter italic">{u.points || 0} XP</p>
-                    </div>
-                    <button
-                      onClick={() => setSelectedUser(u)}
-                      className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest active:scale-90 transition-all shadow-md">
-                      SESUAIKAN
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+        <main className="flex-1 px-6 space-y-3 pb-10 overflow-y-auto custom-scroll">
+          <div className="flex items-center justify-between mb-4 px-1">
+            <h2 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">Unit Laskar Aktif ({filteredUsers.length})</h2>
           </div>
-        </div>
 
-        {/* MODAL ADJUST XP */}
-        {selectedUser && (
-          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[150] flex items-center justify-center p-6 italic font-medium">
-            <div className="bg-white w-full max-w-sm rounded-[3.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 border border-white/20">
-              <div className="bg-gradient-to-br from-green-600 to-teal-700 p-10 text-center text-white relative">
-                <h2 className="text-2xl font-black uppercase tracking-tighter italic leading-none">XP ADJUSTER</h2>
-                <p className="text-[10px] opacity-70 font-bold uppercase mt-3 tracking-[0.2em]">{selectedUser.nama}</p>
-              </div>
+          {filteredUsers.length === 0 ? (
+            <div className="text-center py-20 opacity-20 uppercase font-black text-[10px] tracking-widest">Data Tidak Ditemukan</div>
+          ) : (
+            filteredUsers.map((u) => (
+              <motion.div 
+                layout
+                key={u.id} 
+                className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex justify-between items-center group hover:border-emerald-500/30 transition-all shadow-xl"
+              >
+                <div className="flex items-center gap-4">
+                  {/* FOTO PROFIL ATAU INISIAL */}
+                  <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center font-black text-blue-400 text-sm border border-white/5 uppercase shadow-inner overflow-hidden">
+                    {u.fotoUrl ? (
+                      <img src={u.fotoUrl} className="w-full h-full object-cover" alt={u.nama} />
+                    ) : (
+                      u.nama.substring(0, 1)
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-100 text-[10px] uppercase tracking-tight">{u.nama}</h3>
+                    <p className="text-[8px] text-slate-500 font-black uppercase mt-1 tracking-widest">{u.tingkat || "Laskar"}</p>
+                  </div>
+                </div>
 
-              <form onSubmit={handleAdjustXP} className="p-10 space-y-7">
-                <div>
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Jumlah XP (+/-)</label>
-                  <input
-                    type="number"
-                    value={xpAmount}
-                    onChange={(e) => setXpAmount(e.target.value)}
-                    placeholder="Contoh: 100 atau -50"
-                    className="w-full bg-slate-50 border-none rounded-2xl p-5 mt-2 font-black text-slate-800 outline-none focus:ring-2 focus:ring-green-100 transition-all shadow-inner"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Alasan Penyesuaian</label>
-                  <textarea
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    rows="3"
-                    className="w-full bg-slate-50 border-none rounded-2xl p-5 mt-2 font-bold text-slate-600 outline-none focus:ring-2 focus:ring-green-100 transition-all resize-none shadow-inner"
-                    placeholder="Contoh: Bonus Aktifitas / Pelanggaran"
-                    required
-                  />
-                </div>
-                <div className="flex gap-5 pt-4">
-                  <button type="button" onClick={() => setSelectedUser(null)} className="flex-1 py-5 font-black text-slate-400 uppercase text-[9px] tracking-widest">BATAL</button>
-                  <button type="submit" disabled={isProcessing} className="flex-[2] bg-green-600 text-white font-black py-5 rounded-2xl text-[9px] uppercase shadow-xl shadow-green-600/20 active:scale-95 transition-all">
-                    {isProcessing ? "MENGIRIM..." : "UPDATE XP"}
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xs font-black text-emerald-500 tracking-tighter leading-none">{u.points || 0}</p>
+                    <p className="text-[6px] text-slate-600 font-black uppercase tracking-tighter mt-1">Total XP</p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedUser(u)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest active:scale-90 transition-all shadow-lg shadow-blue-900/20"
+                  >
+                    Atur
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
-        )}
+              </motion.div>
+            ))
+          )}
+        </main>
 
-        <footer className="p-8 text-center bg-slate-50 border-t border-slate-100">
-          <p className="text-[8px] text-slate-300 font-black uppercase tracking-[0.5em] italic">Authority Control v3.5</p>
+        {/* MODAL ADJUST XP */}
+        <AnimatePresence>
+          {selectedUser && (
+            <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[2000] flex items-center justify-center p-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-slate-900 w-full max-w-xs rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl relative"
+              >
+                <button onClick={() => setSelectedUser(null)} className="absolute top-6 right-6 text-slate-500 hover:text-white z-10">
+                  <HiOutlineX size={24} />
+                </button>
+
+                <div className="bg-gradient-to-br from-emerald-600 to-teal-800 p-8 text-center text-white relative">
+                   <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/asfalt-dark.png')]"></div>
+                   {/* FOTO PROFIL ATAU INISIAL DI DALAM MODAL */}
+                   <div className="w-16 h-16 bg-white/20 rounded-2xl mx-auto mb-4 border border-white/30 flex items-center justify-center text-2xl font-black shadow-xl overflow-hidden uppercase relative z-10">
+                    {selectedUser.fotoUrl ? (
+                      <img src={selectedUser.fotoUrl} className="w-full h-full object-cover" alt={selectedUser.nama} />
+                    ) : (
+                      selectedUser.nama.substring(0, 1)
+                    )}
+                   </div>
+                   <h2 className="text-lg font-black uppercase tracking-tighter relative z-10">{selectedUser.nama}</h2>
+                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] opacity-70 relative z-10">Protokol: Penyesuaian XP</p>
+                </div>
+
+                <form onSubmit={handleAdjustXP} className="p-8 space-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Jumlah XP (+/-)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={xpAmount}
+                          onChange={(e) => setXpAmount(e.target.value)}
+                          placeholder="Misal: 100 atau -50"
+                          className="w-full bg-black border border-white/10 rounded-2xl p-4 text-center text-xl font-black text-emerald-400 outline-none focus:border-emerald-500/50 transition-all shadow-inner"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Alasan Operasi</label>
+                      <textarea
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        rows="3"
+                        className="w-full bg-black border border-white/10 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none focus:border-emerald-500/50 transition-all resize-none shadow-inner uppercase italic tracking-tighter"
+                        placeholder="BERIKAN JUSTIFIKASI JELAS..."
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <button 
+                      type="submit" 
+                      disabled={isProcessing} 
+                      className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-emerald-900/20 active:scale-95 transition-all"
+                    >
+                      {isProcessing ? "MENGIRIM..." : "OTORISASI PERUBAHAN"}
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setSelectedUser(null)} 
+                      className="w-full py-2 font-black text-slate-600 uppercase text-[9px] tracking-widest hover:text-white transition-colors"
+                    >
+                      BATALKAN MISI
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        <footer className="mt-auto p-8 text-center border-t border-white/5 bg-slate-900/10">
+          <p className="text-[8px] text-slate-600 font-black uppercase tracking-[0.5em] italic">Protokol Kendali Otoritas v4.0</p>
         </footer>
       </div>
     </div>

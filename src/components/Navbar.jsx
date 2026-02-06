@@ -5,6 +5,9 @@ import { signOut } from "firebase/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import TombolSOS from "../pages/anggota/TombolSOS";
 
+// --- IMPORT KONTEKS KONFIRMASI (Gaya Pembina) ---
+import { useConfirm } from "../pages/pembina/context/ConfirmContext";
+
 // IMPORT REACT ICONS
 import { 
   HiOutlineBookOpen, 
@@ -24,6 +27,7 @@ import {
 export default function Navbar({ role, userData }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const confirm = useConfirm(); // Inisialisasi Hook Konfirmasi
   const [showSfhMenu, setShowSfhMenu] = useState(false);
   const [showSosModal, setShowSosModal] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -39,11 +43,18 @@ export default function Navbar({ role, userData }) {
     setImgError(false);
   }, [userData?.photoURL]);
 
+  // --- FUNGSI LOGOUT DENGAN MODAL KONFIRMASI PREMIUM ---
   const handleLogout = () => {
-    if (window.confirm("KELUAR DARI SISTEM NAVIGASI?")) {
-      signOut(auth);
-      navigate("/");
-    }
+    confirm({
+      title: "Terminate Session?",
+      message: "AKHIRI SELURUH AKTIVITAS OPERASIONAL DAN KELUAR DARI SISTEM NAVIGASI?",
+      type: "danger",
+      confirmText: "Logout",
+      cancelText: "Batal",
+      onConfirm: () => {
+        signOut(auth).then(() => navigate("/"));
+      }
+    });
   };
 
   if (isChatPage) return null;
@@ -57,7 +68,6 @@ export default function Navbar({ role, userData }) {
       { name: "Feed", path: "/pembina/notifications", icon: <HiOutlineBell size={26} /> },
       { name: "Profil", path: "/profile", isAvatar: true },
     ],
-    // --- OPTIMASI MENU PEMBINA ---
     pembina: [
       { name: "Home", path: "/pembina", icon: <HiOutlineHome size={26} /> },
       { name: "Scanner", path: "/pembina/scanner", icon: <HiOutlineQrcode size={26} /> },

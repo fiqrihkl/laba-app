@@ -8,12 +8,12 @@ import {
 } from "react-router-dom";
 import { auth, db } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { AnimatePresence } from "framer-motion";
 
 // --- IMPORT KONTEKS & UI PREMIUM ---
 import { ModalProvider } from "./context/ModalContext";
-import { ConfirmProvider } from "./pages/pembina/context/ConfirmContext"; // Import Baru
+import { ConfirmProvider } from "./pages/pembina/context/ConfirmContext"; 
 import SplashScreen from "./components/SplashScreen";
 import PageLoader from "./components/PageLoader";
 
@@ -176,6 +176,48 @@ function App() {
   const [showSplash, setShowSplash] = useState(true); 
   const [deferredPrompt, setDeferredPrompt] = useState(null); 
 
+  // --- 1. LOGIKA SESSION TIMEOUT & HEARTBEAT ---
+  useEffect(() => {
+    if (user && role === "anggota" && userData) {
+      const userRef = doc(db, "users", userData.id);
+      
+      // A. Cek Durasi Inaktivitas (Protokol Keamanan 24 Jam)
+      const checkSession = () => {
+        if (userData.lastSeen) {
+          // Konversi Firestore Timestamp ke JavaScript Date object
+          const lastActive = userData.lastSeen.toDate ? userData.lastSeen.toDate() : new Date(userData.lastSeen);
+          const now = new Date();
+          const diffInHours = (now - lastActive) / (1000 * 60 * 60);
+
+          // Jika sudah lebih dari 24 jam tidak ada aktivitas digital, paksa logout
+          if (diffInHours > 24) {
+            console.warn("[SECURITY] Intelligence session expired (>24h). Force logout initiated.");
+            signOut(auth);
+            return true;
+          }
+        }
+        return false;
+      };
+
+      const isExpired = checkSession();
+      if (isExpired) return;
+
+      // B. Set Status Online & Perbarui Heartbeat (lastSeen)
+      updateDoc(userRef, {
+        isOnline: true,
+        lastSeen: serverTimestamp()
+      }).catch(err => console.error("Heartbeat Start Error:", err));
+
+      // C. Cleanup: Set Status Offline saat aplikasi ditutup
+      return () => {
+        updateDoc(userRef, {
+          isOnline: false,
+          lastSeen: serverTimestamp()
+        }).catch(err => console.error("Heartbeat Stop Error:", err));
+      };
+    }
+  }, [user, role, userData]);
+
   useEffect(() => {
     const splashTimer = setTimeout(() => {
       setShowSplash(false);
@@ -225,7 +267,7 @@ function App() {
 
   return (
     <ModalProvider>
-      <ConfirmProvider> {/* PEMBUNGKUS KONFIRMASI GLOBAL */}
+      <ConfirmProvider> 
         <AnimatePresence mode="wait">
           {showSplash ? (
             <SplashScreen key="splash" />

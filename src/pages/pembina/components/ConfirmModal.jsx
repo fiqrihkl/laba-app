@@ -10,7 +10,12 @@ export default function ConfirmModal({
   onCancel, 
   confirmText = "Konfirmasi", 
   cancelText = "Batal", 
-  type = "danger" 
+  type = "danger",
+  // PROPS BARU UNTUK INPUT ALASAN
+  showInput = false,
+  inputValue = "",
+  onInputChange = () => {},
+  inputPlaceholder = "Tulis alasan di sini..."
 }) {
   return (
     <AnimatePresence>
@@ -42,9 +47,26 @@ export default function ConfirmModal({
             <h3 className="text-white font-black uppercase tracking-tight text-xl mb-2 leading-none italic">
               {title}
             </h3>
-            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest italic mb-10 leading-relaxed px-2">
+            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest italic mb-6 leading-relaxed px-2">
               {message}
             </p>
+
+            {/* INPUT FIELD DYNAMIC (Hanya muncul jika showInput true) */}
+            {showInput && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="mb-6"
+              >
+                <textarea
+                  value={inputValue}
+                  onChange={(e) => onInputChange(e.target.value)}
+                  placeholder={inputPlaceholder}
+                  className="w-full bg-black border border-white/10 rounded-2xl p-4 text-[11px] font-bold text-slate-300 outline-none focus:border-red-500/50 transition-all resize-none h-24 uppercase italic tracking-tighter"
+                />
+                <p className="text-[8px] text-slate-600 mt-2 uppercase font-black tracking-tighter">* Alasan akan tercatat di log sistem</p>
+              </motion.div>
+            )}
 
             <div className="flex flex-col gap-3">
               {/* TOMBOL KONFIRMASI */}
