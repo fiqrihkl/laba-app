@@ -13,18 +13,18 @@ import {
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
+import { motion, AnimatePresence } from "framer-motion";
 
 // IMPORT REACT ICONS
 import { 
-  MdChevronLeft, 
-  MdDelete, 
-  MdPlaylistAdd, 
-  MdAutoGraph, 
-  MdLayers,
-  MdDescription,
-  MdStarOutline,
-  MdOutlinePlace
-} from "react-icons/md";
+  HiOutlineChevronLeft, 
+  HiOutlineTrash, 
+  HiOutlinePlusCircle, 
+  HiOutlineBookOpen, 
+  HiOutlineViewGrid,
+  HiOutlineStar,
+  HiOutlineLibrary
+} from "react-icons/hi";
 
 export default function KelolaMasterSKU() {
   const [skuList, setSkuList] = useState([]);
@@ -32,13 +32,12 @@ export default function KelolaMasterSKU() {
   const [nomor, setNomor] = useState("");
   const [deskripsi, setDeskripsi] = useState("");
   const [kategori, setKategori] = useState("SPIRITUAL"); 
-  const [subAgama, setSubAgama] = useState(""); // STATE BARU UNTUK POIN 4
+  const [subAgama, setSubAgama] = useState(""); 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  // 1. Monitor status Auth
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -46,7 +45,6 @@ export default function KelolaMasterSKU() {
     return () => unsubscribeAuth();
   }, []);
 
-  // 2. Load Data SKU berdasarkan Tingkat secara Real-time
   useEffect(() => {
     setLoading(true);
     const q = query(
@@ -68,16 +66,13 @@ export default function KelolaMasterSKU() {
     return () => unsub();
   }, [tingkat]);
 
-  // 3. Fungsi Tambah Data dengan Logging
   const handleAdd = async (e) => {
     e.preventDefault();
-
-    if (!nomor || !deskripsi) return alert("Lengkapi nomor dan deskripsi!");
+    if (!nomor || !deskripsi) return alert("Lengkapi data butir SKU!");
     if (!user) return alert("Sesi habis. Silakan login kembali.");
 
     setIsSubmitting(true);
     try {
-      // Objek data yang akan disimpan
       const skuData = {
         tingkat: tingkat,
         nomor: Number(nomor),
@@ -87,19 +82,16 @@ export default function KelolaMasterSKU() {
         createdAt: serverTimestamp(),
       };
 
-      // Tambahkan subAgama hanya jika nomor poin adalah 4
       if (Number(nomor) === 4) {
         skuData.sub_agama = subAgama;
       }
 
       await addDoc(collection(db, "master_sku"), skuData);
 
-      // AUTO-LOGGING (Audit Trail)
       await addDoc(collection(db, "logs"), {
         action: "Tambah Master SKU",
         adminName: user.displayName || "Admin",
-        targetName: `SKU ${tingkat} No. ${nomor} ${Number(nomor) === 4 ? `(${subAgama})` : ""}`,
-        reason: deskripsi.substring(0, 50) + "...",
+        targetName: `SKU ${tingkat} No. ${nomor}`,
         timestamp: serverTimestamp(),
       });
 
@@ -108,96 +100,81 @@ export default function KelolaMasterSKU() {
       setSubAgama("");
       alert("Butir SKU berhasil ditambahkan!");
     } catch (error) {
-      console.error("Gagal menyimpan:", error);
-      alert("Terjadi kesalahan: " + error.message);
+      alert("Gagal menyimpan data.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // 4. Fungsi Hapus Data dengan Logging
   const handleDelete = async (item) => {
     if (window.confirm(`Hapus butir SKU nomor ${item.nomor} secara permanen?`)) {
       try {
         await deleteDoc(doc(db, "master_sku", item.id));
-
         await addDoc(collection(db, "logs"), {
           action: "Hapus Master SKU",
           adminName: user?.displayName || "Admin",
           targetName: `SKU ${item.tingkat} No. ${item.nomor}`,
-          reason: "Penghapusan butir kurikulum",
           timestamp: serverTimestamp(),
         });
-
       } catch (error) {
-        alert("Gagal menghapus: " + error.message);
+        alert("Gagal menghapus.");
       }
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex justify-center pb-24 text-slate-900 italic font-medium">
-      <div className="w-full max-w-md bg-white min-h-screen shadow-2xl flex flex-col relative overflow-hidden border-x border-slate-100">
+    <div className="min-h-screen bg-[#020617] text-slate-200 pb-24 font-sans italic selection:bg-blue-900">
+      <div className="w-full max-w-md mx-auto min-h-screen flex flex-col border-x border-white/5 bg-[#020617]">
         
         {/* HEADER */}
-        <div className="bg-slate-900 pt-12 pb-16 px-8 rounded-b-[3.5rem] text-white relative shadow-xl">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-          <div className="flex items-center gap-5 relative z-10">
-            <button 
-              onClick={() => navigate(-1)} 
-              className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 active:scale-90 transition-all"
-            >
-              <MdChevronLeft size={24} className="text-white" />
+        <header className="p-6 pt-12 flex items-center justify-between border-b border-white/5 bg-slate-900/20">
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-slate-400">
+              <HiOutlineChevronLeft size={24} />
             </button>
             <div>
-              <h1 className="text-lg font-black uppercase tracking-tighter leading-none">Master SKU</h1>
-              <p className="text-[9px] text-blue-400 font-bold uppercase tracking-[0.3em] mt-2">Kurikulum Pangkalan</p>
+              <h1 className="text-sm font-bold uppercase tracking-widest">Master Kurikulum</h1>
+              <p className="text-[9px] text-blue-500 font-bold uppercase tracking-tighter">Pengaturan Butir SKU</p>
             </div>
           </div>
-        </div>
+          <HiOutlineLibrary size={22} className="text-slate-700" />
+        </header>
 
         {/* FORM INPUT */}
-        <div className="px-6 -mt-8 relative z-20">
-          <form onSubmit={handleAdd} className="bg-white p-7 rounded-[2.5rem] shadow-xl border border-slate-50 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[8px] font-black uppercase text-slate-400 ml-2 flex items-center gap-1">
-                  <MdLayers /> Tingkatan
-                </label>
+        <div className="p-6">
+          <form onSubmit={handleAdd} className="bg-slate-900 border border-white/5 p-6 rounded-2xl space-y-4 shadow-xl">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Tingkatan</label>
                 <select
                   value={tingkat}
                   onChange={(e) => setTingkat(e.target.value)}
-                  className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-[10px] outline-none border-2 border-transparent focus:border-blue-900 transition-all"
+                  className="w-full p-3 bg-black border border-white/5 rounded-xl font-bold text-[10px] text-white outline-none focus:border-blue-500 transition-all"
                 >
                   <option value="Ramu">RAMU</option>
                   <option value="Rakit">RAKIT</option>
                   <option value="Terap">TERAP</option>
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black uppercase text-slate-400 ml-2 flex items-center gap-1">
-                  <MdAutoGraph /> Nomor
-                </label>
+              <div>
+                <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Nomor Poin</label>
                 <input
                   type="number"
-                  placeholder="No..."
-                  className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-[10px] outline-none border-2 border-transparent focus:border-blue-900 transition-all shadow-inner"
+                  placeholder="0"
+                  className="w-full p-3 bg-black border border-white/5 rounded-xl font-bold text-[10px] text-blue-400 outline-none focus:border-blue-500"
                   value={nomor}
                   onChange={(e) => setNomor(e.target.value)}
                 />
               </div>
             </div>
 
-            {/* BARIS KATEGORI & SUB-AGAMA (KONDISIONAL) */}
-            <div className={`grid ${Number(nomor) === 4 ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black uppercase text-slate-400 ml-2 flex items-center gap-1">
-                  <MdStarOutline /> Kategori
-                </label>
+            <div className={`grid ${Number(nomor) === 4 ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+              <div>
+                <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Kategori Radar</label>
                 <select
                   value={kategori}
                   onChange={(e) => setKategori(e.target.value)}
-                  className="w-full p-4 bg-blue-50/50 rounded-2xl font-bold text-[10px] text-blue-900 outline-none border-2 border-blue-100 focus:border-blue-900 transition-all"
+                  className="w-full p-3 bg-black border border-white/5 rounded-xl font-bold text-[10px] text-white outline-none focus:border-blue-500"
                 >
                   <option value="SPIRITUAL">SPIRITUAL</option>
                   <option value="EMOSIONAL">EMOSIONAL</option>
@@ -208,35 +185,30 @@ export default function KelolaMasterSKU() {
               </div>
 
               {Number(nomor) === 4 && (
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black uppercase text-slate-400 ml-2 flex items-center gap-1 text-red-600">
-                    <MdOutlinePlace /> Khusus Agama
-                  </label>
+                <div>
+                  <label className="text-[8px] font-bold text-red-500 uppercase tracking-widest ml-1 mb-1 block">Spesifik Agama</label>
                   <select
                     value={subAgama}
                     onChange={(e) => setSubAgama(e.target.value)}
-                    className="w-full p-4 bg-red-50/50 rounded-2xl font-bold text-[10px] text-red-900 outline-none border-2 border-red-100 focus:border-red-900 transition-all"
+                    className="w-full p-3 bg-red-950/20 border border-red-500/20 rounded-xl font-bold text-[10px] text-red-400 outline-none focus:border-red-500"
                     required
                   >
-                    <option value="">Pilih Agama...</option>
+                    <option value="">Pilih...</option>
                     <option value="Islam">Islam</option>
                     <option value="Kristen">Kristen</option>
                     <option value="Katolik">Katolik</option>
                     <option value="Hindu">Hindu</option>
                     <option value="Buddha">Buddha</option>
-                    <option value="Khonghucu">Khonghucu</option>
                   </select>
                 </div>
               )}
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[8px] font-black uppercase text-slate-400 ml-2 flex items-center gap-1">
-                <MdDescription /> Deskripsi Butir SKU
-              </label>
+            <div>
+              <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest ml-1 mb-1 block">Deskripsi Tugas</label>
               <textarea
-                placeholder="Tuliskan isi butir SKU..."
-                className="w-full p-5 bg-slate-50 rounded-[2rem] font-bold text-[10px] outline-none border-2 border-transparent focus:border-blue-900 h-24 transition-all shadow-inner resize-none"
+                placeholder="Isi butir SKU..."
+                className="w-full p-4 bg-black border border-white/5 rounded-xl font-bold text-[11px] text-slate-300 outline-none focus:border-blue-500 h-24 resize-none italic"
                 value={deskripsi}
                 onChange={(e) => setDeskripsi(e.target.value)}
               />
@@ -245,44 +217,49 @@ export default function KelolaMasterSKU() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-blue-900 text-white font-black py-4 rounded-2xl text-[9px] uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
             >
-              {isSubmitting ? "Processing..." : <><MdPlaylistAdd size={18} /> Simpan Butir</>}
+              {isSubmitting ? "Processing..." : <><HiOutlinePlusCircle size={18} /> Simpan Butir SKU</>}
             </button>
           </form>
         </div>
 
         {/* LIST VIEW */}
-        <div className="flex-1 px-6 mt-8 pb-10 overflow-y-auto">
-          <div className="flex justify-between items-center mb-4 px-2">
-            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              Daftar SKU {tingkat}
+        <main className="px-6 flex-1 space-y-3 pb-10 overflow-y-auto custom-scroll">
+          <div className="flex justify-between items-center px-1 mb-2">
+            <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              Daftar SKU {tingkat} ({skuList.length})
             </h2>
-            {loading && <div className="w-4 h-4 border-2 border-blue-900 border-t-transparent rounded-full animate-spin"></div>}
+            {loading && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>}
           </div>
 
-          <div className="space-y-3">
+          <AnimatePresence mode="popLayout">
             {skuList.length === 0 && !loading ? (
-              <div className="bg-slate-50 p-10 rounded-[2.5rem] text-center border-2 border-dashed border-slate-100 opacity-50">
-                <p className="text-[9px] font-black uppercase tracking-widest">Data Kosong</p>
+              <div className="py-20 text-center border border-dashed border-white/5 rounded-xl opacity-40">
+                <p className="text-[9px] uppercase font-bold tracking-widest text-slate-600">Data Kurikulum Kosong</p>
               </div>
             ) : (
               skuList.map((item) => (
-                <div key={item.id} className="bg-white p-5 rounded-[2rem] shadow-sm flex justify-between items-center gap-4 border border-slate-100 group hover:shadow-md transition-all">
-                  <div className="flex gap-4 items-start">
-                    <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center font-black text-blue-900 text-[10px] shadow-inner shrink-0">
+                <motion.div 
+                  layout
+                  key={item.id} 
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-slate-900 border border-white/5 p-4 rounded-xl flex justify-between items-start gap-4 group hover:border-blue-500/30 transition-all"
+                >
+                  <div className="flex gap-4">
+                    <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center font-bold text-blue-400 text-xs border border-white/5 shrink-0">
                       {item.nomor}
                     </div>
-                    <div className="flex flex-col">
-                      <p className="text-[10px] font-bold text-slate-600 leading-relaxed italic">
-                        {item.deskripsi}
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-bold text-slate-200 leading-relaxed italic">
+                        "{item.deskripsi}"
                       </p>
-                      <div className="flex gap-2 mt-1">
-                        <span className="text-[7px] font-black text-blue-400 uppercase tracking-widest">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[7px] font-bold text-blue-500 uppercase tracking-widest">
                           {item.kategori}
                         </span>
                         {item.sub_agama && (
-                          <span className="text-[7px] font-black text-red-500 uppercase tracking-widest border-l border-slate-200 pl-2">
+                          <span className="text-[7px] font-bold text-red-500 uppercase tracking-widest border-l border-white/5 pl-2">
                             Agama: {item.sub_agama}
                           </span>
                         )}
@@ -291,20 +268,19 @@ export default function KelolaMasterSKU() {
                   </div>
                   <button
                     onClick={() => handleDelete(item)}
-                    className="p-2.5 bg-red-50 text-red-400 rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-90 hover:bg-red-100 hover:text-red-600"
+                    className="p-2 text-slate-700 hover:text-red-500 transition-colors"
                   >
-                    <MdDelete size={18} />
+                    <HiOutlineTrash size={18} />
                   </button>
-                </div>
+                </motion.div>
               ))
             )}
-          </div>
-        </div>
+          </AnimatePresence>
+        </main>
 
-        <footer className="p-8 text-center bg-slate-50 border-t border-slate-100 mt-auto">
-          <p className="text-[8px] text-slate-300 font-black uppercase tracking-[0.5em]">Laskar Bahari Curriculum Hub</p>
+        <footer className="mt-auto py-8 text-center border-t border-white/5 mx-6 opacity-30">
+          <p className="text-[8px] text-slate-600 font-bold uppercase tracking-[0.5em]">Curriculum Database System v2.0</p>
         </footer>
-
       </div>
     </div>
   );

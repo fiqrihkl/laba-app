@@ -7,7 +7,6 @@ import TombolSOS from "../pages/anggota/TombolSOS";
 
 // IMPORT REACT ICONS
 import { 
-  HiOutlineUser, 
   HiOutlineBookOpen, 
   HiOutlineShieldCheck, 
   HiOutlineBell, 
@@ -18,7 +17,8 @@ import {
   HiOutlineAcademicCap,
   HiLightningBolt,
   HiExclamation,
-  HiX
+  HiX,
+  HiOutlineChartBar
 } from "react-icons/hi";
 
 export default function Navbar({ role, userData }) {
@@ -28,42 +28,48 @@ export default function Navbar({ role, userData }) {
   const [showSosModal, setShowSosModal] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  // LOGIKA PENTING: Sembunyikan Navbar jika di halaman chat agar tidak menutupi input
+  // Identitas warna berdasarkan Role
+  const isScout = role === "anggota";
+  const activeColorClass = isScout ? "text-red-600" : "text-blue-500";
+  const activeBorderClass = isScout ? "border-red-600" : "border-blue-500";
+
   const isChatPage = location.pathname === "/navi-chat";
 
-  // Reset error state jika photoURL berubah
   useEffect(() => {
     setImgError(false);
   }, [userData?.photoURL]);
 
   const handleLogout = () => {
-    if (window.confirm("Keluar dari Laskar Bahari?")) {
+    if (window.confirm("KELUAR DARI SISTEM NAVIGASI?")) {
       signOut(auth);
       navigate("/");
     }
   };
 
-  if (isChatPage) return null; // Navbar tidak akan dirender di halaman chat
+  if (isChatPage) return null;
 
+  // Konfigurasi Menu berdasarkan Role
   const menuConfig = {
     admin: [
       { name: "Home", path: "/admin", icon: <HiOutlineHome size={26} /> },
       { name: "Verif", path: "/admin/verifikasi-tingkat", icon: <HiOutlineClipboardCheck size={26} /> },
-      { name: "SFH", path: "/admin/investigasi-sfh", icon: <HiOutlineShieldCheck size={26} /> },
-      { name: "Profil", path: "/profile", icon: null, isAvatar: true },
+      { name: "SFH", path: "/pembina/investigasi-sfh", icon: <HiOutlineShieldCheck size={26} /> },
+      { name: "Feed", path: "/pembina/notifications", icon: <HiOutlineBell size={26} /> },
+      { name: "Profil", path: "/profile", isAvatar: true },
     ],
     pembina: [
       { name: "Home", path: "/pembina", icon: <HiOutlineHome size={26} /> },
-      { name: "Scan", path: "/pembina/scanner", icon: <HiOutlineQrcode size={26} /> },
-      { name: "Ujian", path: "/pembina/verifikasi-sku", icon: <HiOutlineAcademicCap size={26} /> },
-      { name: "Profil", path: "/profile", icon: null, isAvatar: true },
+      { name: "Scanner", path: "/pembina/scanner", icon: <HiOutlineQrcode size={26} /> },
+      { name: "Approval", path: "/pembina/verifikasi-sku", icon: <HiOutlineAcademicCap size={26} /> },
+      { name: "Feed", path: "/pembina/notifications", icon: <HiOutlineBell size={26} /> },
+      { name: "Profil", path: "/profile", isAvatar: true },
     ],
     anggota: [
       { name: "Home", path: "/anggota", icon: <HiOutlineHome size={26} /> },
       { name: "SKU", path: "/sku", icon: <HiOutlineBookOpen size={26} /> },
       { name: "SFH", path: "#", icon: <HiOutlineShieldCheck size={36} />, isSpecial: true },
       { name: "Notif", path: "/riwayat-status", icon: <HiOutlineBell size={26} /> },
-      { name: "Profil", path: "/profile", icon: null, isAvatar: true },
+      { name: "Profil", path: "/profile", isAvatar: true },
     ],
   };
 
@@ -71,13 +77,11 @@ export default function Navbar({ role, userData }) {
 
   return (
     <>
-      {/* 1. MODAL OVERLAY UNTUK SOS */}
+      {/* 1. MODAL OVERLAY SOS (KHUSUS ANGGOTA) */}
       <AnimatePresence>
         {showSosModal && (
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-[#020617]/95 backdrop-blur-md"
           >
             <motion.div 
@@ -101,13 +105,11 @@ export default function Navbar({ role, userData }) {
       {/* 2. NAVBAR UTAMA */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-[1000] italic font-medium">
         
-        {/* OVERLAY SFH MENU */}
+        {/* OVERLAY DARK UNTUK MENU SFH ANGGOTA */}
         <AnimatePresence>
           {showSfhMenu && (
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowSfhMenu(false)}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm h-screen w-screen -left-[50vw]"
               style={{ zIndex: -1 }}
@@ -117,10 +119,10 @@ export default function Navbar({ role, userData }) {
 
         <div className="bg-[#020617]/90 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,1)] border border-white/10 px-4 py-2 flex justify-between items-center relative">
           
-          {activeMenu.map((item) => {
+          {activeMenu.map((item, idx) => {
             const isActive = location.pathname === item.path;
 
-            // --- LOGIKA TOMBOL SFH (KHUSUS ANGGOTA) ---
+            // Tombol Khusus SFH (Tengah) untuk Anggota
             if (item.isSpecial) {
               return (
                 <div key="sfh-central" className="relative">
@@ -135,7 +137,7 @@ export default function Navbar({ role, userData }) {
                           className="w-16 h-16 bg-white rounded-full flex flex-col items-center justify-center text-red-600 shadow-xl border-4 border-red-600"
                         >
                           <HiLightningBolt size={24} className="animate-pulse" />
-                          <span className="text-[9px] font-black italic">SOS</span>
+                          <span className="text-[9px] font-black italic uppercase">SOS</span>
                         </motion.button>
 
                         <motion.button
@@ -146,7 +148,7 @@ export default function Navbar({ role, userData }) {
                           className="w-16 h-16 bg-red-600 rounded-full flex flex-col items-center justify-center text-white shadow-xl border-4 border-white"
                         >
                           <HiExclamation size={24} />
-                          <span className="text-[9px] font-black italic">LAPOR</span>
+                          <span className="text-[9px] font-black italic uppercase">LAPOR</span>
                         </motion.button>
                       </div>
                     )}
@@ -154,8 +156,7 @@ export default function Navbar({ role, userData }) {
 
                   <div className="relative -top-12">
                     <motion.button 
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
+                      whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                       onClick={() => setShowSfhMenu(!showSfhMenu)}
                       className={`w-20 h-20 bg-gradient-to-b rounded-full flex flex-col items-center justify-center text-white shadow-2xl border-[6px] border-[#020617] transition-all duration-300 ${showSfhMenu ? 'from-orange-500 to-orange-700 rotate-180' : 'from-red-600 to-red-900'}`}
                     >
@@ -167,35 +168,32 @@ export default function Navbar({ role, userData }) {
               );
             }
 
-            // --- LOGIKA AVATAR PROFIL ---
+            // Rendering Avatar Profil
             if (item.isAvatar) {
               return (
                 <Link key={item.path} to={item.path} className="flex flex-col items-center gap-1 p-2">
-                  <div className={`w-8 h-8 rounded-full border-2 overflow-hidden shadow-lg transition-all flex items-center justify-center ${isActive ? "border-red-600 scale-110" : "border-white/10 grayscale"}`}>
+                  <div className={`w-8 h-8 rounded-full border-2 overflow-hidden shadow-lg transition-all flex items-center justify-center ${isActive ? `${activeBorderClass} scale-110` : "border-white/10 grayscale"}`}>
                     {userData?.photoURL && !imgError ? (
                       <img 
-                        src={userData.photoURL} 
-                        alt="Me" 
-                        className="w-full h-full object-cover" 
+                        src={userData.photoURL} alt="Me" className="w-full h-full object-cover" 
                         onError={() => setImgError(true)}
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-tr from-slate-700 to-slate-900 flex items-center justify-center text-white font-black text-[10px] uppercase">
+                      <div className={`w-full h-full bg-gradient-to-tr from-slate-700 to-slate-900 flex items-center justify-center text-white font-black text-[10px] uppercase`}>
                         {userData?.nama ? userData.nama.substring(0, 2) : "LB"}
                       </div>
                     )}
                   </div>
-                  <span className={`text-[8px] font-black uppercase ${isActive ? "text-red-600" : "text-slate-500"}`}>{item.name}</span>
+                  <span className={`text-[8px] font-black uppercase ${isActive ? activeColorClass : "text-slate-500"}`}>{item.name}</span>
                 </Link>
               );
             }
 
-            // --- MENU LAIN ---
+            // Menu Standar
             return (
               <Link 
-                key={item.path} 
-                to={item.path} 
-                className={`flex flex-col items-center gap-1.5 p-2 transition-all ${isActive ? "text-red-600 scale-110" : "text-slate-500 hover:text-white"}`}
+                key={item.path} to={item.path} 
+                className={`flex flex-col items-center gap-1.5 p-2 transition-all ${isActive ? `${activeColorClass} scale-110` : "text-slate-500 hover:text-white"}`}
               >
                 <div>{item.icon}</div>
                 <span className="text-[8px] font-black uppercase">{item.name}</span>
@@ -203,6 +201,7 @@ export default function Navbar({ role, userData }) {
             );
           })}
 
+          {/* Tombol Logout Khusus Admin/Pembina */}
           {role !== "anggota" && (
             <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 p-2 text-slate-500 hover:text-red-500 transition-colors">
               <HiOutlineLogout size={26} />

@@ -111,6 +111,7 @@ function Profile() {
     }
   }, []);
 
+  // KOMPRESI FOTO PROFIL (LAMA)
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -150,9 +151,12 @@ function Profile() {
     }
   };
 
+  // KOMPRESI BUKTI SERTIFIKAT (BARU - MENGGUNAKAN TEKNIK YANG SAMA)
   const handleSertifikatChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
+    setUploading(true); // Tampilkan indikator proses
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (event) => {
@@ -160,20 +164,25 @@ function Profile() {
       img.src = event.target.result;
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 600; 
+        const MAX_WIDTH = 600; // Resolusi sertifikat sedikit lebih besar agar tulisan terbaca
         const scaleSize = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scaleSize;
+        
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setSertifikatBase64(canvas.toDataURL("image/jpeg", 0.7));
+        
+        // Kompresi ke 70% kualitas JPEG
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+        setSertifikatBase64(compressedBase64);
+        setUploading(false);
       };
     };
   };
 
   const handleApplyRank = async (e) => {
     e.preventDefault();
-    if (!targetTingkat || !sertifikatBase64) return showModal("Gagal", "Lengkapi data.", "danger");
+    if (!targetTingkat || !sertifikatBase64) return showModal("Gagal", "Lengkapi data dan tunggu proses upload bukti.", "danger");
     setUploading(true);
     try {
       await addDoc(collection(db, "pengajuan_tingkat"), {
@@ -188,6 +197,8 @@ function Profile() {
       });
       showModal("Terkirim", "Pengajuan sedang diverifikasi Pembina.", "success");
       setShowApplyModal(false);
+      setSertifikatBase64(""); // Reset form
+      setTargetTingkat("");
     } catch (e) { showModal("Gagal", "Kesalahan sistem.", "danger"); }
     finally { setUploading(false); }
   };
@@ -350,7 +361,7 @@ function Profile() {
                 {/* REKAP ABSENSI OTOMATIS */}
                 <ScoutAttendanceLogs attendanceLog={userData?.attendanceLog} />
 
-                {/* ACHIEVEMENT VAULT (KUMPULAN PIAGAM TER-UPDATE) */}
+                {/* ACHIEVEMENT VAULT */}
                 <div className="bg-slate-900/60 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/10 shadow-3xl relative overflow-hidden mt-6">
                   <div className="flex items-center justify-between mb-8">
                     <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] italic">Achievement Vault</h3>
@@ -360,7 +371,7 @@ function Profile() {
                   <div className="space-y-4">
                     {userData?.claimedBadges && Object.keys(userData.claimedBadges).length > 0 ? (
                       Object.entries(userData.claimedBadges).map(([key, badge], idx) => (
-                        badge.tier === "GOLD" && ( // Hanya tampilkan yang sudah GOLD/Piagam
+                        badge.tier === "GOLD" && ( 
                           <motion.div 
                             key={key}
                             onClick={() => navigate(`/print-piagam/${key}`)}
@@ -392,7 +403,7 @@ function Profile() {
           </AnimatePresence>
         </div>
 
-        {/* MODAL PENGAJUAN NAIK TINGKAT */}
+        {/* MODAL PENGAJUAN NAIK TINGKAT DENGAN KOMPRESI OTOMATIS */}
         <AnimatePresence>
           {showApplyModal && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[1000] flex items-center justify-center p-6 italic font-medium">
@@ -416,10 +427,21 @@ function Profile() {
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 ml-1">Bukti Sertifikat</label>
                     <input type="file" accept="image/*" onChange={handleSertifikatChange} className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-400" required />
                   </div>
-                  {sertifikatBase64 && <div className="w-full h-32 rounded-3xl overflow-hidden border-2 border-white/10 shadow-inner"><img src={sertifikatBase64} className="w-full h-full object-cover" alt="prev" /></div>}
+                  
+                  {/* PREVIEW IMAGE YANG SUDAH DIKOMPRES */}
+                  {uploading && <div className="text-center text-[8px] font-black text-red-500 animate-pulse uppercase tracking-widest">Compressing Data...</div>}
+                  
+                  {sertifikatBase64 && (
+                    <div className="w-full h-32 rounded-3xl overflow-hidden border-2 border-white/10 shadow-inner">
+                      <img src={sertifikatBase64} className="w-full h-full object-cover" alt="prev" />
+                    </div>
+                  )}
+
                   <div className="flex gap-4 pt-4">
-                    <button type="button" onClick={() => setShowApplyModal(false)} className="flex-1 font-black text-slate-500 uppercase text-[10px] tracking-widest transition-colors hover:text-white">Cancel</button>
-                    <button type="submit" disabled={uploading} className="flex-[2] bg-white text-[#020617] font-black py-4 rounded-2xl text-[10px] uppercase shadow-xl active:scale-95 transition-all tracking-[0.2em]">Submit Req</button>
+                    <button type="button" onClick={() => { setShowApplyModal(false); setSertifikatBase64(""); }} className="flex-1 font-black text-slate-500 uppercase text-[10px] tracking-widest transition-colors hover:text-white">Cancel</button>
+                    <button type="submit" disabled={uploading} className="flex-[2] bg-white text-[#020617] font-black py-4 rounded-2xl text-[10px] uppercase shadow-xl active:scale-95 transition-all tracking-[0.2em] disabled:opacity-50">
+                      {uploading ? "Wait..." : "Submit Req"}
+                    </button>
                   </div>
                 </form>
               </motion.div>

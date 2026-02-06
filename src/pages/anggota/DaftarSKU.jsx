@@ -256,7 +256,7 @@ export default function DaftarSKU({ userData }) {
                               <button onClick={() => handleAjukan(poin)} disabled={submitting === poin.id}
                                 className="bg-red-800 text-white text-[7px] font-black px-2 py-1.5 rounded uppercase active:scale-95 disabled:opacity-30 border border-white/10"
                               >
-                                {submitting === poin.id ? "..." : "Uji"}
+                                {submitting === poin.id ? "..." : "Ajukan"}
                               </button>
                             )}
                           </AnimatePresence>
