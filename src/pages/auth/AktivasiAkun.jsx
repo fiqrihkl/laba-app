@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useModal } from "../../context/ModalContext"; // Import Modal Context
 
 // IMPORT REACT ICONS
 import { 
@@ -14,9 +15,7 @@ import {
   HiOutlineEye, 
   HiOutlineEyeOff,
   HiOutlineChevronLeft,
-  HiOutlineBadgeCheck,
-  HiOutlineCheckCircle,
-  HiOutlineXCircle
+  HiOutlineBadgeCheck
 } from "react-icons/hi";
 
 export default function AktivasiAkun() {
@@ -24,171 +23,149 @@ export default function AktivasiAkun() {
   const [loading, setLoading] = useState(false);
   const [foundUser, setFoundUser] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isError, setIsError] = useState(false); 
   
-  // State Modal Otomatis
-  const [modalStatus, setModalStatus] = useState({ show: false, type: "", message: "" });
-
   const [inputCode, setInputCode] = useState("");
   const [inputNTA, setInputNTA] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   
   const navigate = useNavigate();
-
+  const { showModal } = useModal(); // Gunakan fungsi showModal
   const normalize = (str) => str?.toString().trim().toLowerCase();
 
-  // FUNGSI MODAL OTOMATIS (DIPERBAIKI)
-  const triggerModal = (type, message, redirect = null) => {
-    // Pastikan loading berhenti sebelum modal muncul
-    setLoading(false);
-    setModalStatus({ show: true, type, message });
-    
-    // Modal akan menetap selama 3 detik (sesuai durasi animasi progress bar)
-    setTimeout(() => {
-      setModalStatus({ show: false, type: "", message: "" });
-      
-      // Jika ada instruksi redirect (untuk sukses), eksekusi SETELAH modal tertutup
-      if (redirect) {
-        setTimeout(() => {
-          navigate(redirect);
-        }, 500); // Jeda halus agar animasi exit modal selesai dulu
-      }
-    }, 3000);
+  // --- AUDIO FEEDBACK ---
+  const playSuccessSound = () => {
+    try {
+      const context = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = context.createOscillator();
+      const gain = context.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, context.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(1320, context.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
+      osc.connect(gain);
+      gain.connect(context.destination);
+      osc.start();
+      osc.stop(context.currentTime + 0.2);
+    } catch (e) { console.warn("Audio Context blocked"); }
   };
 
-  // --- LOGIKA OTOMATISASI STEP 1 ---
+  const triggerHaptic = () => {
+    if ("vibrate" in navigator) navigator.vibrate([100, 50, 100]);
+  };
+
+  // --- LOGIKA SILENT VALIDATION STEP 1 ---
   useEffect(() => {
-    if (step === 1 && inputCode.trim().length === 6 && inputNTA.trim().length > 3) {
+    setIsError(false);
+    if (step === 1 && inputCode.trim().length === 6 && inputNTA.trim().length >= 4) {
       const delayDebounce = setTimeout(() => {
         autoCheckCode();
-      }, 500); 
+      }, 800);
       return () => clearTimeout(delayDebounce);
     }
-  }, [inputCode, inputNTA]);
+  }, [inputCode, inputNTA, step]);
 
   const autoCheckCode = async () => {
-    const cleanCode = inputCode.trim();
     setLoading(true);
     try {
-      const docRef = doc(db, "users", cleanCode);
+      const docRef = doc(db, "users", inputCode.trim());
       const snap = await getDoc(docRef);
 
       if (snap.exists()) {
         const data = snap.data();
         if (data.isClaimed) {
-          triggerModal("error", "Akun ini sudah aktif. Silakan login.", "/");
-        } else if (normalize(data.nta) !== normalize(inputNTA)) {
-          triggerModal("error", "Kombinasi Kode dan NTA tidak cocok.");
-        } else {
+          showModal("Akses Ditolak", "Akun ini sudah aktif. Silakan kembali ke halaman login.", "danger");
+          navigate("/");
+        } else if (normalize(data.nta) === normalize(inputNTA)) {
+          playSuccessSound(); 
           setFoundUser(data);
           setStep(2);
+        } else {
+          setIsError(true);
+          triggerHaptic();
         }
       } else {
-        triggerModal("error", "Kode Aktivasi tidak ditemukan.");
+        setIsError(true);
+        triggerHaptic();
       }
     } catch (error) {
-      triggerModal("error", "Terjadi masalah koneksi.");
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  // STEP 2: Registrasi Akun Auth
+  // --- REGISTRASI FINAL ---
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (password.length < 6) return triggerModal("error", "Password minimal 6 karakter.");
+    const cleanEmail = email.trim().toLowerCase();
+    
+    if (password.length < 6) {
+      showModal("Proteksi Lemah", "Demi keamanan, password minimal harus 6 karakter.", "danger");
+      return;
+    }
 
     setLoading(true);
     let newUser = null;
 
     try {
-      // 1. Buat User di Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      // 1. Buat User di Auth (Firebase otomatis login di sini)
+      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       newUser = userCredential.user;
 
-      // 2. Siapkan Data Akhir
+      // 2. Siapkan Data
       const finalData = {
         ...foundUser,
         uid: newUser.uid,
-        email: email.toLowerCase().trim(),
+        email: cleanEmail,
         isClaimed: true,
         activatedAt: new Date().toISOString(),
       };
 
-      // 3. Simpan ke koleksi 'users' & Hapus kode sementara
+      // 3. Simpan Ke Database (Hanya bisa nulis jika status Logged In)
       await setDoc(doc(db, "users", newUser.uid), finalData);
       await deleteDoc(doc(db, "users", inputCode.trim()));
+      
+      // --- AREA KRUSIAL ANTI-FLICKER ---
 
-      // 4. Sign Out otomatis agar tidak langsung masuk ke dashboard
+      // 4. Logout SEBELUM mematikan loading dan navigasi
+      // Ini memastikan status Auth kembali 'null' sebelum App.jsx sempat re-render ke dashboard
       await signOut(auth);
 
-      // 5. Tampilkan Modal Sukses (Navigasi dilakukan di dalam triggerModal)
-      triggerModal("success", `Selamat ${foundUser.nama}! Akun kamu telah aktif. Silakan login.`, "/");
-      
+      setLoading(false);
+
+      // 5. Navigasi ke Login dengan state sukses
+      navigate("/", { 
+        replace: true, 
+        state: { 
+          activationSuccess: true, 
+          userName: foundUser.nama 
+        } 
+      });
+
     } catch (error) {
-      // Rollback jika gagal
-      if (newUser) await newUser.delete();
-      
-      if (error.code === "auth/email-already-in-use") {
-        triggerModal("error", "Email sudah digunakan anggota lain.");
-      } else {
-        triggerModal("error", "Gagal aktivasi: " + error.message);
+      setLoading(false);
+      // Jika error terjadi SETELAH newUser dibuat tapi SEBELUM Firestore sukses, hapus user-nya (Rollback)
+      if (newUser && error.code !== "auth/email-already-in-use") {
+         await newUser.delete().catch(() => console.warn("Rollback auth gagal"));
       }
+      
+      let errorMsg = "Sistem gagal memproses aktivasi.";
+      if (error.code === "auth/email-already-in-use") errorMsg = "Email ini sudah digunakan oleh anggota lain.";
+      if (error.code === "auth/invalid-email") errorMsg = "Format email tidak valid.";
+      
+      showModal("Gagal Aktivasi", errorMsg, "danger");
     }
+  };
+
+  const shakeVariants = {
+    shake: { x: [0, -10, 10, -10, 10, 0], transition: { duration: 0.4 } }
   };
 
   return (
     <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 relative overflow-hidden italic font-medium selection:bg-red-800">
-      
-      {/* MODAL STATUS OTOMATIS */}
-      <AnimatePresence>
-        {modalStatus.show && (
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, y: 20 }} 
-              animate={{ scale: 1, y: 0 }} 
-              exit={{ scale: 0.9, y: 20 }}
-              className={`w-full max-w-xs p-8 rounded-[2.5rem] border text-center shadow-2xl relative overflow-hidden ${
-                modalStatus.type === 'success' 
-                  ? 'bg-emerald-950/40 border-emerald-500/30' 
-                  : 'bg-red-950/40 border-red-500/30'
-              }`}
-            >
-              {/* Progress Bar (Sinkron dengan durasi timeout 3 detik) */}
-              <motion.div 
-                initial={{ width: "100%" }}
-                animate={{ width: "0%" }}
-                transition={{ duration: 3, ease: "linear" }}
-                className={`absolute bottom-0 left-0 h-1.5 ${
-                  modalStatus.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'
-                }`}
-              />
-
-              {modalStatus.type === 'success' ? (
-                <HiOutlineCheckCircle size={60} className="mx-auto text-emerald-500 mb-4" />
-              ) : (
-                <HiOutlineXCircle size={60} className="mx-auto text-red-500 mb-4" />
-              )}
-
-              <h3 className={`text-xl font-black uppercase italic tracking-tighter ${
-                modalStatus.type === 'success' ? 'text-emerald-400' : 'text-red-400'
-              }`}>
-                {modalStatus.type === 'success' ? 'Akses Diterima' : 'Akses Ditolak'}
-              </h3>
-
-              <p className="text-[10px] text-white/60 uppercase font-bold mt-2 tracking-widest leading-relaxed">
-                {modalStatus.message}
-              </p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-red-900/10 blur-[130px] rounded-full"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 blur-[110px] rounded-full"></div>
 
@@ -198,9 +175,7 @@ export default function AktivasiAkun() {
             <HiOutlineShieldCheck size={32} className="text-white" />
           </div>
           <h2 className="text-3xl font-black uppercase text-white tracking-tighter leading-none italic">Aktivasi <span className="text-red-600">Akun</span></h2>
-          <div className="flex items-center justify-center gap-3 mt-4 text-slate-500">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em]">Halaman Aktivasi Akun Baru</p>
-          </div>
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mt-4 text-center">Navigator Digital Laskar Bahari</p>
         </div>
 
         <div className="bg-slate-900/40 backdrop-blur-3xl rounded-b-[3.5rem] border-x border-b border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.5)] overflow-hidden">
@@ -214,23 +189,44 @@ export default function AktivasiAkun() {
               {step === 1 ? (
                 <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center leading-relaxed px-2 italic">
-                    Masukkan data otorisasi yang <br /> diterbitkan oleh Gugus Depan
+                    Masukkan data otorisasi resmi <br /> yang diterbitkan Gugus Depan
                   </p>
-                  <div className="space-y-4">
+                  
+                  <motion.div variants={shakeVariants} animate={isError ? "shake" : ""} className="space-y-4">
                     <div className="relative group">
-                      <HiOutlineLockClosed className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-red-500 transition-colors z-10" size={20} />
-                      <input type="text" required placeholder="6-DIGIT CODE" maxLength={6} value={inputCode} onChange={(e) => setInputCode(e.target.value)} className="w-full bg-[#020617]/50 border border-white/5 p-6 rounded-[2rem] font-black text-center text-white text-2xl outline-none focus:border-red-600/50 transition-all shadow-inner tracking-[0.5em] placeholder:tracking-normal placeholder:text-slate-800" />
+                      <HiOutlineLockClosed className={`absolute left-6 top-1/2 -translate-y-1/2 transition-colors z-10 ${isError ? 'text-red-500' : 'text-slate-600 group-focus-within:text-red-500'}`} size={20} />
+                      <input 
+                        type="text" 
+                        placeholder="6-DIGIT CODE" 
+                        maxLength={6} 
+                        value={inputCode} 
+                        onChange={(e) => setInputCode(e.target.value)} 
+                        className={`w-full bg-[#020617]/50 border p-6 rounded-[2rem] font-black text-center text-white text-2xl outline-none transition-all shadow-inner tracking-[0.5em] placeholder:tracking-normal placeholder:text-slate-800 ${isError ? 'border-red-600/50 bg-red-900/5' : 'border-white/5 focus:border-red-600/50'}`} 
+                      />
                     </div>
                     <div className="relative group">
-                      <HiOutlineIdentification className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-red-500 transition-colors z-10" size={20} />
-                      <input type="text" required placeholder="NOMOR TANDA ANGGOTA (NTA)" value={inputNTA} onChange={(e) => setInputNTA(e.target.value)} className="w-full bg-[#020617]/50 border border-white/5 p-6 rounded-[2rem] font-bold text-center text-slate-200 outline-none focus:border-red-600/50 transition-all shadow-inner uppercase text-xs tracking-widest placeholder:text-slate-800" />
+                      <HiOutlineIdentification className={`absolute left-6 top-1/2 -translate-y-1/2 transition-colors z-10 ${isError ? 'text-red-500' : 'text-slate-600 group-focus-within:text-red-500'}`} size={20} />
+                      <input 
+                        type="text" 
+                        placeholder="NTA ANGGOTA" 
+                        value={inputNTA} 
+                        onChange={(e) => setInputNTA(e.target.value)} 
+                        className={`w-full bg-[#020617]/50 border p-6 rounded-[2rem] font-bold text-center text-slate-200 outline-none transition-all shadow-inner uppercase text-xs tracking-widest placeholder:text-slate-800 ${isError ? 'border-red-600/50 bg-red-900/5' : 'border-white/5 focus:border-red-600/50'}`} 
+                      />
                     </div>
+                  </motion.div>
+
+                  <div className="h-4 flex flex-col items-center justify-center">
+                    {loading && (
+                      <div className="flex items-center gap-2">
+                         <div className="w-3 h-3 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin"></div>
+                         <p className="text-[8px] font-black text-red-500 uppercase tracking-widest">Otorisasi...</p>
+                      </div>
+                    )}
+                    {isError && !loading && (
+                      <p className="text-[8px] font-black text-red-500 uppercase tracking-widest animate-pulse">Kredensial Tidak Cocok</p>
+                    )}
                   </div>
-                  {loading && (
-                    <div className="flex flex-col items-center gap-2 py-2">
-                       <div className="w-5 h-5 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin"></div>
-                    </div>
-                  )}
                 </motion.div>
               ) : (
                 <motion.form key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} onSubmit={handleRegister} className="space-y-6">
@@ -243,7 +239,7 @@ export default function AktivasiAkun() {
                   <div className="space-y-4">
                     <div className="relative group">
                       <HiOutlineMail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-600 z-10" size={20} />
-                      <input type="email" required placeholder="Buat Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-[#020617]/50 border border-white/5 p-6 rounded-[2rem] font-bold text-white pl-16 outline-none focus:border-red-600 transition-all text-xs" />
+                      <input type="email" required placeholder="Buat Email Akun" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-[#020617]/50 border border-white/5 p-6 rounded-[2rem] font-bold text-white pl-16 outline-none focus:border-red-600 transition-all text-xs" />
                     </div>
                     <div className="relative group">
                       <HiOutlineLockClosed className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-600 z-10" size={20} />
@@ -254,7 +250,7 @@ export default function AktivasiAkun() {
                     </div>
                   </div>
                   <button type="submit" disabled={loading} className="w-full bg-white text-[#020617] font-black py-5 rounded-[2rem] shadow-3xl active:scale-95 transition-all text-[11px] uppercase tracking-[0.3em]">
-                    {loading ? "PROSES..." : "Aktivasi Akun"}
+                    {loading ? "PROSES..." : "Selesaikan Aktivasi"}
                   </button>
                 </motion.form>
               )}
@@ -263,7 +259,7 @@ export default function AktivasiAkun() {
             <div className="mt-12 flex flex-col items-center gap-4 border-t border-white/5 pt-8">
               <Link to="/" className="flex items-center gap-3 text-[10px] font-black text-slate-500 hover:text-white transition-all uppercase tracking-[0.3em] group italic">
                 <HiOutlineChevronLeft className="group-hover:-translate-x-2 transition-transform" />
-                Balik ke Login
+                Kembali ke Login
               </Link>
             </div>
           </div>
@@ -271,7 +267,7 @@ export default function AktivasiAkun() {
 
         <div className="mt-12 text-center pb-10">
             <p className="text-[9px] font-black text-slate-700 uppercase tracking-[0.5em] leading-loose">
-              Developed by <span className="text-slate-400">Fiqri Haikal</span><br />
+              System Protected by <br />
               © 2026 — Laskar Bahari Security Core
             </p>
         </div>

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { db, auth } from "../../firebase";
-import {
-  signInWithEmailAndPassword,
-} from "firebase/auth";
-import { useNavigate, Link } from "react-router-dom";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion"; 
 import { useModal } from "../../context/ModalContext"; 
@@ -11,13 +9,10 @@ import {
   HiOutlineMail, 
   HiOutlineLockClosed, 
   HiOutlineLogin, 
-  HiOutlineSparkles,
   HiOutlineUserAdd,
   HiOutlineArrowRight,
   HiOutlineDownload,
-  HiOutlineX,
-  HiOutlineDeviceMobile,
-  HiOutlineInformationCircle
+  HiOutlineX
 } from "react-icons/hi";
 
 export default function Login({ installPrompt }) {
@@ -27,6 +22,7 @@ export default function Login({ installPrompt }) {
   const [showInstallModal, setShowInstallModal] = useState(false);
   
   const navigate = useNavigate();
+  const location = useLocation(); // Digunakan untuk menangkap data dari AktivasiAkun
   const { showModal } = useModal();
 
   const containerVariants = {
@@ -35,6 +31,25 @@ export default function Login({ installPrompt }) {
     transition: { duration: 0.6, ease: "easeOut" }
   };
 
+  // --- LOGIKA MENANGKAP SUKSES AKTIVASI ---
+  // Di dalam Login.jsx
+  useEffect(() => {
+    if (location.state?.activationSuccess) {
+      // 1. Tampilkan modal sukses
+      showModal(
+        "Aktivasi Berhasil",
+        `Selamat ${location.state.userName}! Akun kamu telah aktif. Silakan masuk menggunakan email dan password baru.`,
+        "success"
+      );
+
+      // 2. KUNCI PERBAIKAN: Hapus state navigasi secara paksa
+      // Kita arahkan ke path yang sama ("/") tapi dengan state kosong
+      // replace: true memastikan ini tidak menambah daftar "Back" di browser
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, showModal, navigate]);
+
+  // --- LOGIKA PWA INSTALLATION ---
   useEffect(() => {
     if (installPrompt) {
       const timer = setTimeout(() => setShowInstallModal(true), 2000);
@@ -58,11 +73,14 @@ export default function Login({ installPrompt }) {
     }
   };
 
+  // --- LOGIKA LOGIN ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
       const user = userCredential.user;
 
       const usersRef = collection(db, "users");
@@ -72,16 +90,24 @@ export default function Login({ installPrompt }) {
       if (!querySnapshot.empty) {
         const userData = querySnapshot.docs[0].data();
         const role = userData.role;
+        
+        // Redirection logic berdasarkan role
         if (role === "admin") navigate("/admin");
         else if (role === "pembina") navigate("/pembina");
         else if (role === "anggota") navigate("/anggota");
         else navigate("/");
+        
       } else {
         showModal("Akses Ditolak", "Profil Anda belum terhubung dengan database resmi.", "danger");
-        auth.signOut();
+        await auth.signOut();
       }
     } catch (error) {
-      showModal("Gagal Masuk", "Email atau Kata Sandi salah.", "danger");
+      console.error("Login Error:", error);
+      let errorMsg = "Email atau Kata Sandi salah.";
+      if (error.code === "auth/user-not-found") errorMsg = "Akun tidak ditemukan.";
+      if (error.code === "auth/wrong-password") errorMsg = "Kata sandi salah.";
+      
+      showModal("Gagal Masuk", errorMsg, "danger");
     } finally {
       setLoading(false);
     }
@@ -105,7 +131,8 @@ export default function Login({ installPrompt }) {
         <div className="flex flex-col items-center mb-12">
             <motion.div 
               whileHover={{ scale: 1.05, rotate: 3 }} 
-              className="w-24 h-24 bg-white/5 backdrop-blur-2xl rounded-[2.5rem] flex items-center justify-center shadow-3xl mb-6 border border-white/10"
+              className="w-24 h-24 bg-white/5 backdrop-blur-2xl rounded-[2.5rem] flex items-center justify-center mb-6 border border-white/10"
+              style={{ boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8)' }}
             >
               <img src="/logo/logo.png" className="w-16 h-16 object-contain drop-shadow-2xl" alt="Logo" />
             </motion.div>
@@ -154,7 +181,7 @@ export default function Login({ installPrompt }) {
               <button 
                 type="submit" 
                 disabled={loading} 
-                className="w-full bg-gradient-to-r from-red-600 to-red-900 text-white font-black py-5 rounded-2xl shadow-2xl shadow-red-900/20 active:scale-95 transition-all mt-4 group"
+                className="w-full bg-gradient-to-r from-red-600 to-red-900 text-white font-black py-5 rounded-2xl shadow-2xl shadow-red-900/20 active:scale-95 transition-all mt-4 group disabled:opacity-50"
               >
                 <div className="flex items-center justify-center gap-3 uppercase tracking-[0.3em] text-[11px]">
                   {loading ? (
@@ -166,18 +193,18 @@ export default function Login({ installPrompt }) {
               </button>
             </form>
 
-{/* ACTIVATION LINK */}
-              <div className="text-center pt-4">
-                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3 italic">Belum punya akun? Aktivasi disini</p>
-                <Link to="/aktivasi" className="inline-flex items-center gap-2 text-red-500 hover:text-red-400 transition-all group font-black text-[11px] uppercase tracking-widest">
-                  <HiOutlineUserAdd size={18} />
-                  Aktivasi Akun
-                  <HiOutlineArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </div>
-            <div className="mt-1 space-y-4">
-              {/* ✨ PREMIUM PWA HUB */}
-              <div className="bg-white/5 rounded-3xl p-5 border border-white/5 group transition-all hover:bg-white/10">
+            {/* ACTIVATION LINK */}
+            <div className="text-center pt-8">
+              <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3 italic">Belum punya akun? Aktivasi disini</p>
+              <Link to="/aktivasi" className="inline-flex items-center gap-2 text-red-500 hover:text-red-400 transition-all group font-black text-[11px] uppercase tracking-widest">
+                <HiOutlineUserAdd size={18} />
+                Aktivasi Akun
+                <HiOutlineArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+
+            <div className="mt-6">
+              <div className="bg-white/5 rounded-3xl p-5 border border-white/5 transition-all hover:bg-white/10">
                 <button 
                   onClick={handleInstallApp}
                   className="w-full bg-white text-[#020617] py-4 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl shadow-black/20"
@@ -186,8 +213,6 @@ export default function Login({ installPrompt }) {
                   Install App
                 </button>
               </div>
-
-              
             </div>
           </div>
         </div>
@@ -209,10 +234,13 @@ export default function Login({ installPrompt }) {
               initial={{ y: "100%", opacity: 0 }} 
               animate={{ y: 0, opacity: 1 }} 
               exit={{ y: "100%", opacity: 0 }} 
-              className="bg-slate-900 w-full max-w-sm rounded-[3.5rem] overflow-hidden shadow-3xl border border-white/10 italic"
+              className="bg-slate-900 w-full max-w-sm rounded-[3.5rem] overflow-hidden border border-white/10 italic"
+              style={{ boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8)' }}
             >
               <div className="bg-gradient-to-br from-red-600 to-red-900 p-12 text-center text-white relative">
-                <button onClick={() => setShowInstallModal(false)} className="absolute top-8 right-8 text-white/40 hover:text-white transition-colors"><HiOutlineX size={28} /></button>
+                <button onClick={() => setShowInstallModal(false)} className="absolute top-8 right-8 text-white/40 hover:text-white transition-colors">
+                  <HiOutlineX size={28} />
+                </button>
                 <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-3xl flex items-center justify-center mx-auto mb-6 border border-white/20 shadow-2xl">
                   <HiOutlineDownload size={40} className="animate-bounce" />
                 </div>
@@ -220,7 +248,9 @@ export default function Login({ installPrompt }) {
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] mt-3 opacity-60">Install Tactical HUB</p>
               </div>
               <div className="p-10 text-center">
-                <p className="text-[12px] font-bold text-slate-400 leading-relaxed italic mb-10 px-2">Access radar SKU, inventory, and emergency SOS directly from your home screen.</p>
+                <p className="text-[12px] font-bold text-slate-400 leading-relaxed italic mb-10 px-2">
+                  Access radar SKU, inventory, and emergency SOS directly from your home screen.
+                </p>
                 <div className="flex flex-col gap-4">
                   <button onClick={handleInstallApp} className="w-full bg-white text-[#020617] py-6 rounded-2xl uppercase text-[11px] font-black tracking-widest shadow-2xl active:scale-95 transition-all">Secure Download</button>
                   <button onClick={() => setShowInstallModal(false)} className="text-[10px] font-black text-slate-600 uppercase tracking-widest py-2">Dismiss Briefing</button>
@@ -230,12 +260,6 @@ export default function Login({ installPrompt }) {
           </div>
         )}
       </AnimatePresence>
-
-      <style jsx>{`
-        .shadow-3xl {
-          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
-        }
-      `}</style>
     </div>
   );
 }

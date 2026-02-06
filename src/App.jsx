@@ -73,63 +73,68 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
     role: role 
   });
 
-  if (loading) {
+  // PROTEKSI KONDISI LOADING: Jangan tampilkan PageLoader jika sedang di /aktivasi
+  if (loading && location.pathname !== "/aktivasi") {
     return <PageLoader />;
   }
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
+        {/* PRIORITAS 1: Rute Aktivasi harus berdiri sendiri tanpa syarat */}
         <Route path="/aktivasi" element={<AktivasiAkun />} />
         
         <Route
-          path="/"
-          element={
-            !user ? (
-              <Login installPrompt={installPrompt} />
-            ) : role === "admin" ? (
-              <Navigate to="/admin" replace />
-            ) : role === "pembina" ? (
-              <Navigate to="/pembina" replace />
-            ) : role === "anggota" ? (
-              <Navigate to="/anggota" replace />
-            ) : (
-              <div className="flex items-center justify-center h-screen bg-[#020617]">
-                <div className="text-center font-sans italic">
-                  <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Menyinkronkan profil...</p>
-                  <button 
-                    onClick={() => signOut(auth)} 
-                    className="mt-4 text-[8px] font-black text-red-500 uppercase tracking-tighter underline"
-                  >
-                    Batal & Keluar
-                  </button>
-                </div>
-              </div>
-            )
-          }
-        />
+  path="/"
+  element={
+    !user ? (
+      <Login installPrompt={installPrompt} />
+    ) : location.pathname === "/aktivasi" ? (
+      // PRIORITAS: Jika di /aktivasi, biarkan halaman tersebut yang memegang kendali penuh
+      <AktivasiAkun />
+    ) : !role ? (
+      /* Hanya tampilkan sinkronisasi jika user login tapi role belum ada, 
+         DAN pastikan user tidak sedang di halaman aktivasi */
+      location.pathname !== "/aktivasi" ? (
+        <div className="flex items-center justify-center h-screen bg-[#020617]">
+          <div className="text-center font-sans italic">
+            <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Menyinkronkan profil...</p>
+            <button 
+              onClick={() => signOut(auth)} 
+              className="mt-4 text-[8px] font-black text-red-500 uppercase tracking-tighter underline"
+            >
+              Batal & Keluar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <AktivasiAkun />
+      )
+    ) : role === "admin" ? (
+      <Navigate to="/admin" replace />
+    ) : role === "pembina" ? (
+      <Navigate to="/pembina" replace />
+    ) : (
+      <Navigate to="/anggota" replace />
+    )
+  }
+/>
 
-        {/* --- AKSES ADMIN & PEMBINA --- */}
+        {/* --- PROTECTED ROUTES --- */}
         <Route path="/admin/verifikasi-tingkat" element={user && (role === "admin" || role === "pembina") ? <VerifikasiTingkat /> : <Navigate to="/" replace />} />
         <Route path="/pembina/verifikasi-sku" element={user && (role === "admin" || role === "pembina") ? <VerifikasiSKU /> : <Navigate to="/" replace />} />
         <Route path="/pembina/investigasi-sfh" element={user && (role === "admin" || role === "pembina") ? <InvestigasiSFH /> : <Navigate to="/" replace />} />
         <Route path="/pembina/monitor-sos" element={user && (role === "admin" || role === "pembina") ? <MonitorSOS /> : <Navigate to="/" replace />} />
         <Route path="/admin/master-sku" element={user && (role === "admin" || role === "pembina") ? <KelolaMasterSKU /> : <Navigate to="/" replace />} />
         <Route path="/pembina/notifications" element={user && (role === "admin" || role === "pembina") ? <NotificationList /> : <Navigate to="/" replace />} />
-
-        {/* --- RUTE KHUSUS ADMIN --- */}
         <Route path="/admin" element={user && role === "admin" ? <AdminDashboard /> : <Navigate to="/" replace />} />
         <Route path="/admin/logs" element={user && role === "admin" ? <AuditTrailLogs /> : <Navigate to="/" replace />} />
         <Route path="/admin/kta-editor" element={user && role === "admin" ? <KTAEditor /> : <Navigate to="/" replace />} />
-
-        {/* --- RUTE OPERASIONAL LAINNYA --- */}
         <Route path="/kelola-pengguna" element={user && (role === "admin" || role === "pembina") ? <KelolaPengguna /> : <Navigate to="/" replace />} />
         <Route path="/admin/pengumuman" element={user && (role === "admin" || role === "pembina") ? <KelolaInformasi /> : <Navigate to="/" replace />} />
         <Route path="/admin/validasi-poin" element={user && (role === "admin" || role === "pembina") ? <ValidasiPoin /> : <Navigate to="/" replace />} />
         <Route path="/admin/struktur" element={user && (role === "admin" || role === "pembina" || role === "anggota") ? <StrukturOrganisasi /> : <Navigate to="/" replace />} />
-
-        {/* --- RUTE KHUSUS PEMBINA --- */}
         <Route path="/pembina" element={user && role === "pembina" ? <PembinaDashboard /> : <Navigate to="/" replace />} />
         <Route path="/pembina/riwayat" element={user && (role === "admin" || role === "pembina") ? <RiwayatPresensi /> : <Navigate to="/" replace />} />
         <Route path="/pembina/scanner" element={user && role === "pembina" ? <ScannerPembina /> : <Navigate to="/" replace />} />
@@ -137,8 +142,6 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
         <Route path="/pembina/admin-hub" element={user && (role === "admin" || role === "pembina") ? <AdminHub /> : <Navigate to="/" replace />} />
         <Route path="/pembina/statistik-sku" element={user && (role === "admin" || role === "pembina") ? <StatistikSKU /> : <Navigate to="/" replace />} />
         <Route path="/pembina/export-presensi" element={user && (role === "admin" || role === "pembina") ? <ExportPresensi /> : <Navigate to="/" replace />} />
-
-        {/* --- RUTE ANGGOTA --- */}
         <Route path="/anggota" element={user && role === "anggota" ? <AnggotaDashboard /> : <Navigate to="/" replace />} />
         <Route path="/sku" element={user && role === "anggota" ? <DaftarSKU userData={userData} /> : <Navigate to="/" replace />} />
         <Route path="/riwayat-status" element={user && role === "anggota" ? <RiwayatStatus /> : <Navigate to="/" replace />} />
@@ -147,21 +150,8 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
         <Route path="/leaderboard" element={user ? <Leaderboard /> : <Navigate to="/" replace />} />
         <Route path="/announcements" element={user && role === "anggota" ? <Announcements /> : <Navigate to="/" replace />} />
         <Route path="/navi-chat" element={<NaviChat />} />
-        
-        {/* --- RUTE PROFIL --- */}
-        <Route 
-          path="/profile" 
-          element={
-            user && (role === "admin" || role === "pembina") 
-            ? <ProfilePembina /> 
-            : user && role === "anggota" 
-            ? <ProfileAnggota /> 
-            : <Navigate to="/" replace />
-          } 
-        />
-        
+        <Route path="/profile" element={user && (role === "admin" || role === "pembina") ? <ProfilePembina /> : user && role === "anggota" ? <ProfileAnggota /> : <Navigate to="/" replace />} />
         <Route path="/print-piagam/:badgeKey" element={user && role === "anggota" ? <PrintPiagam /> : <Navigate to="/" replace />} />
-
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
@@ -176,22 +166,17 @@ function App() {
   const [showSplash, setShowSplash] = useState(true); 
   const [deferredPrompt, setDeferredPrompt] = useState(null); 
 
-  // --- 1. LOGIKA SESSION TIMEOUT & HEARTBEAT ---
   useEffect(() => {
     if (user && role === "anggota" && userData) {
       const userRef = doc(db, "users", userData.id);
       
-      // A. Cek Durasi Inaktivitas (Protokol Keamanan 24 Jam)
       const checkSession = () => {
         if (userData.lastSeen) {
-          // Konversi Firestore Timestamp ke JavaScript Date object
           const lastActive = userData.lastSeen.toDate ? userData.lastSeen.toDate() : new Date(userData.lastSeen);
           const now = new Date();
           const diffInHours = (now - lastActive) / (1000 * 60 * 60);
 
-          // Jika sudah lebih dari 24 jam tidak ada aktivitas digital, paksa logout
           if (diffInHours > 24) {
-            console.warn("[SECURITY] Intelligence session expired (>24h). Force logout initiated.");
             signOut(auth);
             return true;
           }
@@ -199,29 +184,26 @@ function App() {
         return false;
       };
 
-      const isExpired = checkSession();
-      if (isExpired) return;
+      if (checkSession()) return;
 
-      // B. Set Status Online & Perbarui Heartbeat (lastSeen)
       updateDoc(userRef, {
         isOnline: true,
         lastSeen: serverTimestamp()
-      }).catch(err => console.error("Heartbeat Start Error:", err));
+      }).catch(err => console.warn("Heartbeat start prevented."));
 
-      // C. Cleanup: Set Status Offline saat aplikasi ditutup
       return () => {
-        updateDoc(userRef, {
-          isOnline: false,
-          lastSeen: serverTimestamp()
-        }).catch(err => console.error("Heartbeat Stop Error:", err));
+        if (auth.currentUser) {
+          updateDoc(userRef, {
+            isOnline: false,
+            lastSeen: serverTimestamp()
+          }).catch(err => console.warn("Heartbeat cleanup skipped."));
+        }
       };
     }
   }, [user, role, userData]);
 
   useEffect(() => {
-    const splashTimer = setTimeout(() => {
-      setShowSplash(false);
-    }, 3000); 
+    const splashTimer = setTimeout(() => setShowSplash(false), 3000); 
 
     const installHandler = (e) => {
       e.preventDefault();
@@ -247,7 +229,7 @@ function App() {
             setRole(null);
           }
         } catch (error) {
-          console.error("[AUTH ERROR] Syncing Firestore:", error);
+          console.error("[AUTH ERROR]:", error);
           setRole(null);
         }
       } else {
@@ -281,7 +263,7 @@ function App() {
                   </>
                 )}
                 
-                <div className={user ? "pb-24 md:pt-20 md:pb-0" : ""}>
+                <div className={user && role ? "pb-24 md:pt-20 md:pb-0" : ""}>
                   <AnimatedRoutes 
                     key={loading ? "loading" : "content"} 
                     user={user} 
