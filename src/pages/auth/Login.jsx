@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { db, auth } from "../../firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { 
+  signInWithEmailAndPassword, 
+  sendPasswordResetEmail 
+} from "firebase/auth";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion"; 
@@ -12,17 +15,21 @@ import {
   HiOutlineUserAdd,
   HiOutlineArrowRight,
   HiOutlineDownload,
-  HiOutlineX
+  HiOutlineX,
+  HiOutlineEye,
+  HiOutlineEyeOff,
+  HiOutlineQuestionMarkCircle
 } from "react-icons/hi";
 
 export default function Login({ installPrompt }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [showInstallModal, setShowInstallModal] = useState(false);
   
   const navigate = useNavigate();
-  const location = useLocation(); // Digunakan untuk menangkap data dari AktivasiAkun
+  const location = useLocation(); 
   const { showModal } = useModal();
 
   const containerVariants = {
@@ -32,22 +39,17 @@ export default function Login({ installPrompt }) {
   };
 
   // --- LOGIKA MENANGKAP SUKSES AKTIVASI ---
-  // Di dalam Login.jsx
   useEffect(() => {
     if (location.state?.activationSuccess) {
-      // 1. Tampilkan modal sukses
+      const userName = location.state.userName || "Anggota";
       showModal(
         "Aktivasi Berhasil",
-        `Selamat ${location.state.userName}! Akun kamu telah aktif. Silakan masuk menggunakan email dan password baru.`,
+        `Selamat ${userName}! Akun kamu telah aktif. Silakan masuk menggunakan email dan password baru.`,
         "success"
       );
-
-      // 2. KUNCI PERBAIKAN: Hapus state navigasi secara paksa
-      // Kita arahkan ke path yang sama ("/") tapi dengan state kosong
-      // replace: true memastikan ini tidak menambah daftar "Back" di browser
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location, showModal, navigate]);
+  }, [location.state, showModal, navigate, location.pathname]);
 
   // --- LOGIKA PWA INSTALLATION ---
   useEffect(() => {
@@ -73,6 +75,27 @@ export default function Login({ installPrompt }) {
     }
   };
 
+  // --- LOGIKA LUPA PASSWORD ---
+  const handleForgotPassword = async () => {
+    if (!email) {
+      showModal("Email Kosong", "Silakan masukkan email Anda pada kolom login terlebih dahulu untuk menyetel ulang kata sandi.", "info");
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      showModal(
+        "Email Terkirim", 
+        "Tautan pengaturan ulang kata sandi telah dikirim ke email Anda. Periksa kotak masuk atau folder spam.", 
+        "success"
+      );
+    } catch (error) {
+      let errorMsg = "Gagal mengirim email reset password.";
+      if (error.code === "auth/user-not-found") errorMsg = "Email tidak terdaftar dalam sistem kami.";
+      showModal("Gagal Reset", errorMsg, "danger");
+    }
+  };
+
   // --- LOGIKA LOGIN ---
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -91,7 +114,6 @@ export default function Login({ installPrompt }) {
         const userData = querySnapshot.docs[0].data();
         const role = userData.role;
         
-        // Redirection logic berdasarkan role
         if (role === "admin") navigate("/admin");
         else if (role === "pembina") navigate("/pembina");
         else if (role === "anggota") navigate("/anggota");
@@ -164,17 +186,34 @@ export default function Login({ installPrompt }) {
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-4 italic">Password</label>
+                <div className="flex justify-between items-center px-4">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Password</label>
+                  <button 
+                    type="button" 
+                    onClick={handleForgotPassword}
+                    className="text-[9px] font-black text-red-500/80 hover:text-red-400 uppercase tracking-widest transition-colors flex items-center gap-1"
+                  >
+                    <HiOutlineQuestionMarkCircle size={12} />
+                    Lupa Password?
+                  </button>
+                </div>
                 <div className="relative group">
                   <HiOutlineLockClosed className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-red-500 transition-colors" size={20} />
                   <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"} 
                     value={password} 
                     onChange={(e) => setPassword(e.target.value)} 
                     placeholder="••••••••" 
-                    className="w-full bg-[#020617]/50 border border-white/5 rounded-2xl py-5 pl-16 pr-6 font-bold text-white outline-none focus:border-red-600/50 transition-all text-sm shadow-inner placeholder:text-slate-700" 
+                    className="w-full bg-[#020617]/50 border border-white/5 rounded-2xl py-5 pl-16 pr-14 font-bold text-white outline-none focus:border-red-600/50 transition-all text-sm shadow-inner placeholder:text-slate-700" 
                     required 
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <HiOutlineEyeOff size={20} /> : <HiOutlineEye size={20} />}
+                  </button>
                 </div>
               </div>
 
@@ -193,7 +232,6 @@ export default function Login({ installPrompt }) {
               </button>
             </form>
 
-            {/* ACTIVATION LINK */}
             <div className="text-center pt-8">
               <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3 italic">Belum punya akun? Aktivasi disini</p>
               <Link to="/aktivasi" className="inline-flex items-center gap-2 text-red-500 hover:text-red-400 transition-all group font-black text-[11px] uppercase tracking-widest">
@@ -217,7 +255,6 @@ export default function Login({ installPrompt }) {
           </div>
         </div>
 
-        {/* FOOTER */}
         <div className="mt-12 text-center">
             <p className="text-[9px] font-black text-slate-700 uppercase tracking-[0.5em] leading-loose">
               System Created by <span className="text-slate-400 font-black">Fiqri Haikal</span> <br />
@@ -226,7 +263,6 @@ export default function Login({ installPrompt }) {
         </div>
       </motion.div>
 
-      {/* MODAL INSTALL AUTO-POPUP */}
       <AnimatePresence>
         {showInstallModal && (
           <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-6 bg-black/90 backdrop-blur-md">

@@ -24,6 +24,7 @@ import NotificationListener from "./components/NotificationListener";
 // --- IMPORT HALAMAN ---
 import Login from "./pages/auth/Login";
 import AktivasiAkun from "./pages/auth/AktivasiAkun";
+import ResetPassword from "./pages/auth/ResetPassword";
 
 // Anggota
 import AnggotaDashboard from "./pages/anggota/AnggotaDashboard";
@@ -85,41 +86,42 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
         <Route path="/aktivasi" element={<AktivasiAkun />} />
         
         <Route
-  path="/"
-  element={
-    !user ? (
-      <Login installPrompt={installPrompt} />
-    ) : location.pathname === "/aktivasi" ? (
-      // PRIORITAS: Jika di /aktivasi, biarkan halaman tersebut yang memegang kendali penuh
-      <AktivasiAkun />
-    ) : !role ? (
-      /* Hanya tampilkan sinkronisasi jika user login tapi role belum ada, 
-         DAN pastikan user tidak sedang di halaman aktivasi */
-      location.pathname !== "/aktivasi" ? (
-        <div className="flex items-center justify-center h-screen bg-[#020617]">
-          <div className="text-center font-sans italic">
-            <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Menyinkronkan profil...</p>
-            <button 
-              onClick={() => signOut(auth)} 
-              className="mt-4 text-[8px] font-black text-red-500 uppercase tracking-tighter underline"
-            >
-              Batal & Keluar
-            </button>
-          </div>
-        </div>
-      ) : (
-        <AktivasiAkun />
-      )
-    ) : role === "admin" ? (
-      <Navigate to="/admin" replace />
-    ) : role === "pembina" ? (
-      <Navigate to="/pembina" replace />
-    ) : (
-      <Navigate to="/anggota" replace />
-    )
-  }
-/>
+        path="/"
+        element={
+          !user ? (
+            <Login installPrompt={installPrompt} />
+          ) : location.pathname === "/aktivasi" ? (
+            // PRIORITAS: Jika di /aktivasi, biarkan halaman tersebut yang memegang kendali penuh
+            <AktivasiAkun />
+          ) : !role ? (
+            /* Hanya tampilkan sinkronisasi jika user login tapi role belum ada, 
+              DAN pastikan user tidak sedang di halaman aktivasi */
+            location.pathname !== "/aktivasi" ? (
+              <div className="flex items-center justify-center h-screen bg-[#020617]">
+                <div className="text-center font-sans italic">
+                  <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Menyinkronkan profil...</p>
+                  <button 
+                    onClick={() => signOut(auth)} 
+                    className="mt-4 text-[8px] font-black text-red-500 uppercase tracking-tighter underline"
+                  >
+                    Batal & Keluar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <AktivasiAkun />
+            )
+          ) : role === "admin" ? (
+            <Navigate to="/admin" replace />
+          ) : role === "pembina" ? (
+            <Navigate to="/pembina" replace />
+          ) : (
+            <Navigate to="/anggota" replace />
+          )
+        }
+      />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* --- PROTECTED ROUTES --- */}
         <Route path="/admin/verifikasi-tingkat" element={user && (role === "admin" || role === "pembina") ? <VerifikasiTingkat /> : <Navigate to="/" replace />} />
