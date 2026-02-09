@@ -97,7 +97,7 @@ const DashboardHeader = ({
         <div className="flex justify-between items-center mb-6 px-2">
            <div className="bg-yellow-500/10 px-4 py-2 rounded-xl flex items-center gap-2 border border-yellow-500/20">
             <HiOutlineStar className="text-yellow-400" />
-            <span className="text-[11px] font-black text-yellow-500 uppercase tracking-tighter">LV. {userData?.level || 1}</span>
+            <span className="text-[11px] font-black text-yellow-500 uppercase tracking-tighter">Level {userData?.level || 1}</span>
           </div>
           <button onClick={onShowGallery} className="bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all border border-white/5 shadow-inner">
             <HiOutlineArchive className="text-red-500" />
@@ -120,8 +120,8 @@ const DashboardHeader = ({
 
         {/* XP Progression Bar */}
         <div className="flex justify-between items-center mb-2 text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
-          <span className="flex items-center gap-1 text-green-400"><HiOutlineStar className="w-3 h-3"/> Progression</span>
-          <span>{Math.max(0, 2000 - (userData?.points || 0))} XP to Evolusi</span>
+          <span className="flex items-center gap-1 text-green-400"><HiOutlineStar className="w-3 h-3"/> Progres Navi</span>
+          <span>+{Math.max(0, 2000 - (userData?.points || 0))} XP untuk Evolusi</span>
         </div>
         <div className="w-full bg-black/60 h-3 rounded-full overflow-hidden p-0.5 border border-white/5 shadow-inner">
           <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(((userData?.points || 0) / 2000) * 100, 100)}%` }} className="h-full bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 rounded-full relative">

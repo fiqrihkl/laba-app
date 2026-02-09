@@ -64,24 +64,31 @@ function Profile() {
     transition: { duration: 0.4, ease: "easeOut" }
   };
 
+  /**
+   * LOGIKA DISPLAY TINGKAT:
+   * Menampilkan tingkatan secara dinamis berdasarkan data terbaru dari Firestore.
+   */
   const getDisplayTingkat = () => {
     const tingkat = userData?.tingkat?.toUpperCase();
     if (!tingkat || tingkat === "" || tingkat === "BELUM ADA TINGKATAN") return "Penggalang";
     if (tingkat === "RAMU") return "Penggalang Ramu";
     if (tingkat === "RAKIT") return "Penggalang Rakit";
     if (tingkat === "TERAP") return "Penggalang Terap";
-    return "Penggalang";
+    return tingkat; // Fallback jika ada tingkatan khusus lainnya
   };
 
   useEffect(() => {
     const user = auth.currentUser;
     if (user) {
+      // Listener Real-time untuk data User (Mendeteksi perubahan tingkat otomatis)
       const qUser = query(collection(db, "users"), where("uid", "==", user.uid));
       const unsubscribeUser = onSnapshot(qUser, (snapshot) => {
         if (!snapshot.empty) {
           const docSnapshot = snapshot.docs[0];
           const data = docSnapshot.data();
           setUserData({ ...data, docId: docSnapshot.id });
+          
+          // Update form data agar sinkron saat edit dibuka
           setFormData({
             nama: data.nama || "",
             telepon: data.telepon || "",
@@ -94,6 +101,7 @@ function Profile() {
         setLoading(false);
       });
 
+      // Listener untuk Pengajuan Tingkat (Jika manual apply)
       const qPending = query(
         collection(db, "pengajuan_tingkat"),
         where("uid", "==", user.uid),
@@ -111,7 +119,6 @@ function Profile() {
     }
   }, []);
 
-  // KOMPRESI FOTO PROFIL (LAMA)
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -151,12 +158,11 @@ function Profile() {
     }
   };
 
-  // KOMPRESI BUKTI SERTIFIKAT (BARU - MENGGUNAKAN TEKNIK YANG SAMA)
   const handleSertifikatChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
-    setUploading(true); // Tampilkan indikator proses
+    setUploading(true);
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (event) => {
@@ -164,15 +170,12 @@ function Profile() {
       img.src = event.target.result;
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 600; // Resolusi sertifikat sedikit lebih besar agar tulisan terbaca
+        const MAX_WIDTH = 600;
         const scaleSize = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scaleSize;
-        
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        // Kompresi ke 70% kualitas JPEG
         const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
         setSertifikatBase64(compressedBase64);
         setUploading(false);
@@ -197,7 +200,7 @@ function Profile() {
       });
       showModal("Terkirim", "Pengajuan sedang diverifikasi Pembina.", "success");
       setShowApplyModal(false);
-      setSertifikatBase64(""); // Reset form
+      setSertifikatBase64(""); 
       setTargetTingkat("");
     } catch (e) { showModal("Gagal", "Kesalahan sistem.", "danger"); }
     finally { setUploading(false); }
@@ -311,7 +314,7 @@ function Profile() {
                       { 
                         icon: <MdSchool />, 
                         label: "Tingkatan SKU", 
-                        val: (!userData?.tingkat || userData.tingkat === "" || userData.tingkat === "BELUM ADA TINGKATAN") ? "Belum Ada Tingkatan" : userData.tingkat, 
+                        val: (!userData?.tingkat || userData.tingkat === "" || userData.tingkat === "BELUM ADA TINGKATAN") ? "Penggalang" : userData.tingkat, 
                         color: "text-red-500" 
                       },
                       { icon: <MdWc />, label: "Jenis Kelamin", val: userData?.jenisKelamin || "-", color: "text-blue-400" },
@@ -358,7 +361,6 @@ function Profile() {
                   </p>
                 </div>
 
-                {/* REKAP ABSENSI OTOMATIS */}
                 <ScoutAttendanceLogs attendanceLog={userData?.attendanceLog} />
 
                 {/* ACHIEVEMENT VAULT */}
@@ -403,7 +405,7 @@ function Profile() {
           </AnimatePresence>
         </div>
 
-        {/* MODAL PENGAJUAN NAIK TINGKAT DENGAN KOMPRESI OTOMATIS */}
+        {/* MODAL PENGAJUAN NAIK TINGKAT */}
         <AnimatePresence>
           {showApplyModal && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[1000] flex items-center justify-center p-6 italic font-medium">
@@ -428,7 +430,6 @@ function Profile() {
                     <input type="file" accept="image/*" onChange={handleSertifikatChange} className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-400" required />
                   </div>
                   
-                  {/* PREVIEW IMAGE YANG SUDAH DIKOMPRES */}
                   {uploading && <div className="text-center text-[8px] font-black text-red-500 animate-pulse uppercase tracking-widest">Compressing Data...</div>}
                   
                   {sertifikatBase64 && (

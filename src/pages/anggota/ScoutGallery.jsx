@@ -25,7 +25,7 @@ const ScoutGallery = ({ userLevel = 1, userData, onClose }) => {
     { lvl: 10, x: 70, y: 750, name: "Official Stage", slang: "Cakep! Baretnya bikin tingkat kece naik 1000%! ✨", desc: "Identitas resmi sudah terpasang. Kamu sekarang pilar penting di pasukan!", task: "Cek Log Notifikasi, ambil setiap kesempatan XP yang ada!" },
     { lvl: 5, x: 30, y: 950, name: "Pathfinder Stage", slang: "Slay banget hasduknya! Vibes penggalang sejati emang beda. 🧣💅", desc: "Hasduk ini suci, jagalah kehormatannya selama penjelajahan!", task: "Lengkapi poin SKU Rakitmu agar bisa upgrade baret resmi!" },
     { lvl: 2, x: 65, y: 1150, name: "Navigator Stage", slang: "Menyala abangkuh! Jangan sampe kesasar di hutan ya! 🧭🔥", desc: "Kompas sudah di tangan, arah masa depan mulai terlihat jelas.", task: "Absen setiap hari & kumpulkan XP harian bersamaku!" },
-    { lvl: 1, x: 45, y: 1350, name: "New Recruit", slang: "Semangat ya maba! Perjalanan seru kita baru dimulai! 🌱🐣", desc: "Seragam masih polos, tapi semangatmu harus membara!", task: "Push terus XP-mu agar bisa terus lanjut menjelajah bersamaku!" },
+    { lvl: 1, x: 45, y: 1350, name: "New Recruit", slang: "Semangat ya! Perjalanan seru kita baru dimulai! 🌱🐣", desc: "Seragam masih polos, tapi semangatmu harus membara!", task: "Push terus XP-mu agar bisa terus lanjut menjelajah bersamaku!" },
   ];
 
   // Logic Hitung Progress Path agar pas di titik level saat ini

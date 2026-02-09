@@ -7,9 +7,9 @@ const MissionBrief = ({ announcements, userData, onClaimXP }) => {
   return (
     <div className="mt-12 relative z-20">
       <div className="px-10 flex justify-between items-center mb-6">
-        <h2 className="text-[11px] font-black uppercase text-slate-500 italic tracking-[0.3em]">Mission Brief</h2>
+        <h2 className="text-[11px] font-black uppercase text-slate-500 italic tracking-[0.3em]">Papan Informasi</h2>
         <Link to="/announcements" className="text-[10px] font-black text-red-600 uppercase border-b border-red-600/30 pb-0.5 cursor-pointer hover:text-red-400 transition-colors">
-          Explore All
+          Lihat Semua
         </Link>
       </div>
       <div className="flex overflow-x-auto gap-6 px-6 pb-6 scrollbar-hide">

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { db, auth } from "../../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { SKU_CATEGORIES } from "../../utils/badgeLogic";
@@ -7,11 +7,16 @@ import * as htmlToImage from "html-to-image";
 import { HiOutlineDownload, HiOutlineChevronLeft, HiOutlineShieldCheck } from "react-icons/hi";
 
 function PrintPiagam() {
-  const { badgeKey } = useParams(); // Mengambil kunci kategori (contoh: SPIRITUAL)
+  const { badgeKey } = useParams(); 
   const navigate = useNavigate();
+  const location = useLocation();
   const certificateRef = useRef(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Mengambil level dari query parameter (misal: ?level=RAMU)
+  const queryParams = new URLSearchParams(location.search);
+  const levelParam = queryParams.get("level");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,7 +40,7 @@ function PrintPiagam() {
         });
         
         const link = document.createElement("a");
-        link.download = `Piagam_${badgeKey}_${userData?.nama || "Navigator"}.png`;
+        link.download = `Piagam_${badgeKey}_${levelParam || 'LVL'}_${userData?.nama || "Navigator"}.png`;
         link.href = dataUrl;
         link.click();
       } catch (error) {
@@ -46,35 +51,38 @@ function PrintPiagam() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-[#020617] flex items-center justify-center text-blue-400 font-black tracking-widest animate-pulse">
-      LOADING DIGITAL ASSET...
+    <div className="min-h-screen bg-[#020617] flex items-center justify-center text-blue-400 font-black tracking-widest animate-pulse italic text-xs">
+      SYNCHRONIZING ARTIFACT...
     </div>
   );
 
   const badgeInfo = SKU_CATEGORIES[badgeKey];
-  const claimData = userData?.claimedBadges?.[badgeKey];
   
-  // LOGIKA PATH GAMBAR: Menggunakan badgeKey dari URL untuk memanggil file spesifik
+  /**
+   * FIX LOGIKA HISTORY:
+   * Mengambil data klaim berdasarkan kombinasi BadgeKey dan Level dari URL
+   */
+  const claimData = userData?.claimedBadges?.[`${badgeKey}_${levelParam}`];
+  
   const logoPath = `/images/badge/${badgeKey}.png`;
-  
   const piagamId = `NAV-${badgeKey?.toUpperCase()}-${auth.currentUser?.uid.substring(0, 8).toUpperCase()}`;
 
+  // Tampilan Rank Status sesuai permintaan: Menampilkan tingkatan anggota
   const getRankStatus = () => {
-    const level = claimData?.level?.toLowerCase();
-    if (level === "ramu") return "Calon Penggalang Rakit";
-    if (level === "rakit") return "Calon Penggalang Terap";
-    return "Calon Penggalang Ramu";
+    if (levelParam) return levelParam.toUpperCase();
+    if (claimData?.level) return claimData.level.toUpperCase();
+    return userData?.tingkat?.toUpperCase() || "PRAMUKA PENGGALANG";
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] p-4 md:p-8 flex flex-col items-center overflow-y-auto">
+    <div className="min-h-screen bg-[#0f172a] p-4 md:p-8 flex flex-col items-center overflow-y-auto italic">
       {/* Action Bar */}
       <div className="w-full max-w-[400px] flex justify-between mb-6">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-400 text-[10px] font-black tracking-widest hover:text-white transition-all uppercase">
-          <HiOutlineChevronLeft size={16}/> Back to Hub
+          <HiOutlineChevronLeft size={16}/> Kembali
         </button>
         <button onClick={downloadCertificate} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-[0_0_20px_rgba(37,99,235,0.4)] active:scale-95 transition-all">
-          <HiOutlineDownload size={16} className="inline mr-2"/> Download Artifact
+          <HiOutlineDownload size={16} className="inline mr-2"/> Unduh Piagam
         </button>
       </div>
 
@@ -98,7 +106,9 @@ function PrintPiagam() {
             <div className="text-right">
                 <p className="text-[7px] font-black text-slate-300 uppercase tracking-tighter leading-none">Issue Date</p>
                 <p className="text-[8px] font-bold text-slate-400">
-                    {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    {claimData?.claimedAt 
+                      ? new Date(claimData.claimedAt).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                      : new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </p>
             </div>
         </div>
@@ -111,7 +121,7 @@ function PrintPiagam() {
           style={{ fontSize: '8px', fontWeight: '900', color: '#1e293b' }}
         >
           {Array.from({ length: 160 }).map((_, i) => (
-            <span key={i} className="m-2">LASKAR BAHARI</span>
+            <span key={i} className="m-2 uppercase">LASKAR BAHARI</span>
           ))}
         </div>
 
@@ -122,14 +132,13 @@ function PrintPiagam() {
           <div className="relative mb-3">
             <div className="absolute inset-0 rounded-full border-2 border-dashed border-amber-400/50 animate-[spin_10s_linear_infinite]"></div>
             <div className="bg-white p-3 rounded-full relative z-10 shadow-xl border border-slate-100">
-              {/* GAMBAR LOGO BADGE DINAMIS */}
               <img 
                 src={logoPath} 
                 alt={`${badgeKey} Badge`}
                 className="w-14 h-14 object-contain"
                 onError={(e) => { 
                   e.target.onerror = null; 
-                  e.target.src = "/images/badge/default.png"; // Fallback jika file PNG kategori tidak ditemukan
+                  e.target.src = "/images/badge/default.png"; 
                 }} 
               />
             </div>
@@ -164,10 +173,10 @@ function PrintPiagam() {
               <div className="absolute inset-0 bg-blue-600 blur-lg opacity-10 transition-opacity"></div>
               <div className="relative bg-[#0f172a] p-3 rounded-2xl border-b-4 border-blue-600 shadow-xl">
                 <p className="text-[13px] font-black text-white uppercase tracking-wider mb-0.5">
-                    GOLD MASTER: {badgeInfo?.name || badgeKey}
+                    LENCANA {badgeInfo?.name || badgeKey}: {claimData?.tier || 'GOLD'}
                 </p>
                 <div className="inline-block px-3 py-0.5 bg-blue-500/20 rounded-full">
-                  <p className="text-[8px] font-black text-blue-400 uppercase italic">
+                  <p className="text-[8px] font-black text-blue-400 uppercase italic tracking-widest">
                     Rank Status: {getRankStatus()}
                   </p>
                 </div>
@@ -176,7 +185,7 @@ function PrintPiagam() {
 
             <div className="pt-1">
               <p className="text-[9.5px] italic font-bold text-slate-500 leading-tight px-6 line-clamp-3">
-                "{badgeInfo?.competency || "Telah teruji dan layak menyandang gelar kualifikasi dalam sistem operasional Laskar Bahari."}"
+                "{badgeInfo?.competency || claimData?.competency || "Telah teruji dan layak menyandang gelar kualifikasi dalam sistem operasional Laskar Bahari."}"
               </p>
             </div>
           </div>
@@ -184,7 +193,7 @@ function PrintPiagam() {
 
         {/* Footer Area */}
         <div className="mt-auto w-full flex justify-between items-end relative z-10 pt-4 border-t-2 border-slate-50">
-          <div className="text-left">
+          <div className="text-left text-slate-800">
             <div className="flex items-center gap-1 text-blue-600 mb-1">
               <HiOutlineShieldCheck size={12} className="animate-pulse" />
               <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">System Verified</span>
@@ -205,10 +214,12 @@ function PrintPiagam() {
              </div>
           </div>
 
-          <div className="text-right">
+          <div className="text-right text-slate-800">
              <p className="text-[7px] uppercase font-bold text-slate-300 leading-none">Mission Cleared</p>
              <p className="text-[10px] font-black text-slate-800">
-               {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
+               {claimData?.claimedAt 
+                 ? new Date(claimData.claimedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
+                 : new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
              </p>
              <div className="mt-0.5">
                 <span className="text-[9px] font-black italic text-blue-600 tracking-tighter">NAVIGASI APP</span>
