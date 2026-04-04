@@ -58,7 +58,9 @@ import EventList from "./pages/pembina/EventList"; // Daftar Master Kegiatan
 import CreateEvent from "./pages/pembina/CreateEvent"; // Form Tambah Kegiatan
 import BulkInputNama from "./pages/pembina/BulkInputNama"; // Form Import Nama
 import ParticipantList from "./pages/pembina/ParticipantList"; // Lihat Daftar Peserta Per Event
+import EditEvent from "./pages/pembina/EditEvent"; // Form Edit Data Kegiatan
 import VerifyCertificate from "./pages/pembina/VerifyCertificate"; // Halaman Publik
+
 
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -169,6 +171,8 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
   path="/pembina/participants/:eventId" 
   element={user && (role === "pembina" || role === "admin") ? <ParticipantList /> : <Navigate to="/" replace />} 
 />
+
+<Route path="/pembina/edit-event/:eventId" element={user && role === "pembina" ? <EditEvent /> : <Navigate to="/" replace />} />
 
         {/* --- PROTECTED ROUTES ANGGOTA --- */}
         <Route path="/anggota" element={user && role === "anggota" ? <AnggotaDashboard /> : <Navigate to="/" replace />} />
