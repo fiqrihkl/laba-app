@@ -172,7 +172,9 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
   element={user && (role === "pembina" || role === "admin") ? <ParticipantList /> : <Navigate to="/" replace />} 
 />
 
-<Route path="/pembina/edit-event/:eventId" element={user && role === "pembina" ? <EditEvent /> : <Navigate to="/" replace />} />
+<Route 
+  path="/pembina/edit-event/:eventId" 
+  element={user && (role === "pembina" || role === "admin") ? <EditEvent /> : <Navigate to="/" replace />} />
 
         {/* --- PROTECTED ROUTES ANGGOTA --- */}
         <Route path="/anggota" element={user && role === "anggota" ? <AnggotaDashboard /> : <Navigate to="/" replace />} />
