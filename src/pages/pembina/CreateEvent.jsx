@@ -3,19 +3,18 @@ import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineBadgeCheck, HiOutlineArrowLeft, HiOutlineCheckCircle, HiOutlineXCircle } from 'react-icons/hi';
+import { HiOutlineBadgeCheck, HiOutlineArrowLeft, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineCalendar } from 'react-icons/hi';
 
 const CreateEvent = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState({ show: false, success: true, message: '' });
   
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // State untuk tanggal tunggal (Penerbitan)
+  const [issueDate, setIssueDate] = useState('');
 
   const [eventData, setEventData] = useState({
     title: '',
-    date: '',
     location: '',
     idFormat: '',
     description: '',
@@ -32,20 +31,13 @@ const CreateEvent = () => {
     e.preventDefault();
     setLoading(true);
 
-    let finalDateRange = "";
-    const startFormatted = formatDateIndo(startDate);
-    const endFormatted = formatDateIndo(endDate);
-
-    if (startDate === endDate || !endDate) {
-      finalDateRange = startFormatted;
-    } else {
-      finalDateRange = `${startFormatted} s/d ${endFormatted}`;
-    }
-
     try {
+      // Mengonversi input date HTML ke format teks Indonesia
+      const finalDateFormatted = formatDateIndo(issueDate);
+
       await addDoc(collection(db, "events"), {
         ...eventData,
-        date: finalDateRange,
+        date: finalDateFormatted, // Disimpan sebagai tanggal penerbitan yang sudah rapi
         createdAt: serverTimestamp(),
         status: 'active'
       });
@@ -53,10 +45,9 @@ const CreateEvent = () => {
       setModal({
         show: true,
         success: true,
-        message: "PROTOKOL BERHASIL: MASTER KEGIATAN TELAH DIARSIPKAN KE DATABASE."
+        message: "PROTOKOL BERHASIL: MASTER KEGIATAN & TANGGAL PENERBITAN TELAH DIARSIPKAN."
       });
 
-      // Tunggu 2 detik agar user sempat membaca modal sebelum navigasi
       setTimeout(() => {
         navigate('/pembina/event-list');
       }, 2000);
@@ -142,6 +133,7 @@ const CreateEvent = () => {
 
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
             
+            {/* INPUT NAMA KEGIATAN */}
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nama Kegiatan / Event</label>
               <input 
@@ -154,41 +146,35 @@ const CreateEvent = () => {
               />
             </div>
 
+            {/* INPUT TANGGAL PENERBITAN & LOKASI */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tanggal Mulai</label>
-                <input 
-                  type="date"
-                  required
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all uppercase appearance-none"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tanggal Penerbitan</label>
+                <div className="relative">
+                  <input 
+                    type="date"
+                    required
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all uppercase appearance-none"
+                    value={issueDate}
+                    onChange={(e) => setIssueDate(e.target.value)}
+                  />
+                  <HiOutlineCalendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" size={18} />
+                </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tanggal Selesai</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Lokasi Otoritas</label>
                 <input 
-                  type="date"
+                  type="text"
                   required
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all uppercase appearance-none"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                  placeholder="CONTOH: BIAU"
+                  value={eventData.location}
+                  onChange={(e) => setEventData({...eventData, location: e.target.value})}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Lokasi Kegiatan</label>
-              <input 
-                type="text"
-                required
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                placeholder="SMPN 1 BIAU"
-                value={eventData.location}
-                onChange={(e) => setEventData({...eventData, location: e.target.value})}
-              />
-            </div>
-
+            {/* PROTOKOL ID FORMAT */}
             <div className="bg-blue-600/5 border border-blue-500/20 p-6 rounded-[1.5rem] relative">
               <label className="block text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">
                 Protokol Penomoran ID (Custom):
@@ -196,7 +182,7 @@ const CreateEvent = () => {
               <input 
                 type="text"
                 required
-                className="w-full bg-black border border-blue-500/30 rounded-xl px-4 py-3 text-sm font-black text-white focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-800"
+                className="w-full bg-black border border-blue-500/30 rounded-xl px-4 py-3 text-sm font-black text-white focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-800 uppercase"
                 placeholder="CONTOH: LB/PG-IV/2026/"
                 value={eventData.idFormat}
                 onChange={(e) => setEventData({...eventData, idFormat: e.target.value})}
@@ -204,11 +190,12 @@ const CreateEvent = () => {
               <div className="mt-4 flex items-center gap-3 bg-blue-900/20 p-3 rounded-lg border border-blue-500/10">
                 <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
                 <p className="text-[9px] font-black text-blue-300 uppercase tracking-tighter">
-                  Output Preview: <span className="text-white ml-2">{eventData.idFormat || 'FORMAT/'}001</span>
+                  Output Preview: <span className="text-white ml-2">{eventData.idFormat.toUpperCase() || 'FORMAT/'}001</span>
                 </p>
               </div>
             </div>
 
+            {/* DESKRIPSI */}
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Keterangan / Deskripsi</label>
               <textarea 
