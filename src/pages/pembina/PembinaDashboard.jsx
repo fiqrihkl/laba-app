@@ -30,7 +30,8 @@ import {
   HiOutlineLightningBolt, HiOutlineStatusOnline,
   HiOutlineAcademicCap, HiOutlineShieldExclamation,
   HiOutlineShieldCheck, HiOutlineTrendingUp, HiOutlineTrendingDown,
-  HiOutlineSearch, HiOutlineDocumentDownload, HiOutlineLightningBolt as HiFlash
+  HiOutlineSearch, HiOutlineDocumentDownload, HiOutlineLightningBolt as HiFlash,
+  HiOutlineBadgeCheck // Icon tambahan untuk Sertifikat
 } from "react-icons/hi";
 
 export default function PembinaDashboard() {
@@ -383,6 +384,28 @@ export default function PembinaDashboard() {
                       </div>
                     </div>
                     <HiOutlineChevronRight className="text-slate-700" />
+                  </button>
+                </div>
+              </div>
+
+              {/* --- MENU BARU: VALIDASI SERTIFIKAT --- */}
+              <div className="space-y-4">
+                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Sertifikasi & Piagam</h2>
+                <div className="grid grid-cols-1 gap-3">
+                  <button 
+                    onClick={() => navigate("/pembina/event-list")} 
+                    className="bg-emerald-600/10 border border-emerald-500/20 p-5 rounded-xl flex items-center justify-between hover:bg-emerald-500/20 transition-all group"
+                  >
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+                        <HiOutlineBadgeCheck size={24} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-emerald-200 uppercase tracking-tight">Validasi Sertifikat</p>
+                        <p className="text-[9px] text-emerald-500/70 uppercase font-black tracking-widest italic mt-1">Setup QR & Data Piagam</p>
+                      </div>
+                    </div>
+                    <HiOutlineChevronRight className="text-emerald-900" />
                   </button>
                 </div>
               </div>

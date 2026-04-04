@@ -53,6 +53,13 @@ import ExportPresensi from "./pages/pembina/ExportPresensi";
 import NotificationList from "./pages/pembina/NotificationList";
 import ProfilePembina from "./pages/pembina/Profile"; 
 
+// --- FITUR BARU VALIDASI SERTIFIKAT ---
+import EventList from "./pages/pembina/EventList"; // Daftar Master Kegiatan
+import CreateEvent from "./pages/pembina/CreateEvent"; // Form Tambah Kegiatan
+import BulkInputNama from "./pages/pembina/BulkInputNama"; // Form Import Nama
+import ParticipantList from "./pages/pembina/ParticipantList"; // Lihat Daftar Peserta Per Event
+import VerifyCertificate from "./pages/pembina/VerifyCertificate"; // Halaman Publik
+
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import KelolaPengguna from "./pages/admin/KelolaPengguna";
@@ -73,14 +80,6 @@ import SettingsSertifikat from "./pages/admin/SettingsSertifikat";
 const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
   const location = useLocation();
 
-  console.log("[NAVIGASI DEBUG] Status:", { 
-    path: location.pathname, 
-    isLoading: loading, 
-    hasUser: !!user, 
-    role: role 
-  });
-
-  // PROTEKSI KONDISI LOADING
   if (loading && location.pathname !== "/aktivasi") {
     return <PageLoader />;
   }
@@ -88,7 +87,6 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* PRIORITAS 1: Rute Aktivasi */}
         <Route path="/aktivasi" element={<AktivasiAkun />} />
         
         <Route
@@ -96,25 +94,14 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
           element={
             !user ? (
               <Login installPrompt={installPrompt} />
-            ) : location.pathname === "/aktivasi" ? (
-              <AktivasiAkun />
             ) : !role ? (
-              location.pathname !== "/aktivasi" ? (
-                <div className="flex items-center justify-center h-screen bg-[#020617]">
-                  <div className="text-center font-sans italic">
-                    <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Menyinkronkan profil...</p>
-                    <button 
-                      onClick={() => signOut(auth)} 
-                      className="mt-4 text-[8px] font-black text-red-500 uppercase tracking-tighter underline"
-                    >
-                      Batal & Keluar
-                    </button>
-                  </div>
+              <div className="flex items-center justify-center h-screen bg-[#020617]">
+                <div className="text-center font-sans italic">
+                  <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Menyinkronkan profil...</p>
+                  <button onClick={() => signOut(auth)} className="mt-4 text-[8px] font-black text-red-500 uppercase tracking-tighter underline">Batal & Keluar</button>
                 </div>
-              ) : (
-                <AktivasiAkun />
-              )
+              </div>
             ) : role === "admin" ? (
               <Navigate to="/admin" replace />
             ) : role === "pembina" ? (
@@ -126,19 +113,18 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
         />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* RUTE VERIFIKASI PUBLIK (Diletakkan sejajar tanpa tag Routes tambahan) */}
+        {/* --- RUTE PUBLIK --- */}
         <Route path="/verify/:uid/:tingkat" element={<Verify />} />
+        <Route path="/v/:certId" element={<VerifyCertificate />} /> 
 
         {/* --- PROTECTED ROUTES ADMIN --- */}
         <Route path="/admin" element={user && role === "admin" ? <AdminDashboard /> : <Navigate to="/" replace />} />
         <Route path="/admin/logs" element={user && role === "admin" ? <AuditTrailLogs /> : <Navigate to="/" replace />} />
         <Route path="/admin/kta-editor" element={user && role === "admin" ? <KTAEditor /> : <Navigate to="/" replace />} />
-        
-        {/* RUTE BARU PELANTIKAN & SERTIFIKAT */}
-        <Route path="/admin/pusat-pelantikan" element={user && (role === "admin" || role === "pembina") ? <PusatPelantikan /> : <Navigate to="/" replace />} />
         <Route path="/admin/settings-sertifikat" element={user && role === "admin" ? <SettingsSertifikat /> : <Navigate to="/" replace />} />
 
         {/* --- PROTECTED ROUTES SHARED (ADMIN & PEMBINA) --- */}
+        <Route path="/admin/pusat-pelantikan" element={user && (role === "admin" || role === "pembina") ? <PusatPelantikan /> : <Navigate to="/" replace />} />
         <Route path="/admin/verifikasi-tingkat" element={user && (role === "admin" || role === "pembina") ? <VerifikasiTingkat /> : <Navigate to="/" replace />} />
         <Route path="/pembina/verifikasi-sku" element={user && (role === "admin" || role === "pembina") ? <VerifikasiSKU /> : <Navigate to="/" replace />} />
         <Route path="/pembina/investigasi-sfh" element={user && (role === "admin" || role === "pembina") ? <InvestigasiSFH /> : <Navigate to="/" replace />} />
@@ -155,9 +141,34 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
         <Route path="/pembina/statistik-sku" element={user && (role === "admin" || role === "pembina") ? <StatistikSKU /> : <Navigate to="/" replace />} />
         <Route path="/pembina/export-presensi" element={user && (role === "admin" || role === "pembina") ? <ExportPresensi /> : <Navigate to="/" replace />} />
 
-        {/* --- PROTECTED ROUTES PEMBINA --- */}
+        {/* --- PROTECTED ROUTES PEMBINA (FITUR SERTIFIKAT BARU) --- */}
         <Route path="/pembina" element={user && role === "pembina" ? <PembinaDashboard /> : <Navigate to="/" replace />} />
         <Route path="/pembina/scanner" element={user && role === "pembina" ? <ScannerPembina /> : <Navigate to="/" replace />} />
+        
+        {/* --- ALUR MANAJEMEN SERTIFIKAT LASKAR BAHARI --- */}
+{/* 1. Halaman Utama: Daftar Semua Kegiatan */}
+<Route 
+  path="/pembina/event-list" 
+  element={user && (role === "pembina" || role === "admin") ? <EventList /> : <Navigate to="/" replace />} 
+/>
+
+{/* 2. Form: Tambah Master Kegiatan Baru */}
+<Route 
+  path="/pembina/create-event" 
+  element={user && (role === "pembina" || role === "admin") ? <CreateEvent /> : <Navigate to="/" replace />} 
+/>
+
+{/* 3. Form: Input Nama Peserta (Massal) berdasarkan ID Event */}
+<Route 
+  path="/pembina/input-nama/:eventId" 
+  element={user && (role === "pembina" || role === "admin") ? <BulkInputNama /> : <Navigate to="/" replace />} 
+/>
+
+{/* 4. Halaman: Detail Daftar Peserta, Export, & Download QR per Event */}
+<Route 
+  path="/pembina/participants/:eventId" 
+  element={user && (role === "pembina" || role === "admin") ? <ParticipantList /> : <Navigate to="/" replace />} 
+/>
 
         {/* --- PROTECTED ROUTES ANGGOTA --- */}
         <Route path="/anggota" element={user && role === "anggota" ? <AnggotaDashboard /> : <Navigate to="/" replace />} />
@@ -189,13 +200,11 @@ function App() {
   useEffect(() => {
     if (user && role === "anggota" && userData) {
       const userRef = doc(db, "users", userData.id);
-      
       const checkSession = () => {
         if (userData.lastSeen) {
           const lastActive = userData.lastSeen.toDate ? userData.lastSeen.toDate() : new Date(userData.lastSeen);
           const now = new Date();
           const diffInHours = (now - lastActive) / (1000 * 60 * 60);
-
           if (diffInHours > 24) {
             signOut(auth);
             return true;
@@ -203,20 +212,11 @@ function App() {
         }
         return false;
       };
-
       if (checkSession()) return;
-
-      updateDoc(userRef, {
-        isOnline: true,
-        lastSeen: serverTimestamp()
-      }).catch(err => console.warn("Heartbeat start prevented."));
-
+      updateDoc(userRef, { isOnline: true, lastSeen: serverTimestamp() }).catch(() => {});
       return () => {
         if (auth.currentUser) {
-          updateDoc(userRef, {
-            isOnline: false,
-            lastSeen: serverTimestamp()
-          }).catch(err => console.warn("Heartbeat cleanup skipped."));
+          updateDoc(userRef, { isOnline: false, lastSeen: serverTimestamp() }).catch(() => {});
         }
       };
     }
@@ -224,23 +224,17 @@ function App() {
 
   useEffect(() => {
     const splashTimer = setTimeout(() => setShowSplash(false), 3000); 
-
-    const installHandler = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
+    const installHandler = (e) => { e.preventDefault(); setDeferredPrompt(e); };
     window.addEventListener("beforeinstallprompt", installHandler);
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setLoading(true); 
-
       if (currentUser) {
         setUser(currentUser);
         try {
           const usersRef = collection(db, "users");
           const q = query(usersRef, where("uid", "==", currentUser.uid));
           const querySnapshot = await getDocs(q);
-
           if (!querySnapshot.empty) {
             const data = querySnapshot.docs[0].data();
             setRole(data.role);
@@ -249,22 +243,15 @@ function App() {
             setRole(null);
           }
         } catch (error) {
-          console.error("[AUTH ERROR]:", error);
           setRole(null);
         }
       } else {
-        setUser(null);
-        setRole(null);
-        setUserData(null);
+        setUser(null); setRole(null); setUserData(null);
       }
       setLoading(false); 
     });
 
-    return () => {
-      unsubscribe();
-      clearTimeout(splashTimer);
-      window.removeEventListener("beforeinstallprompt", installHandler);
-    };
+    return () => { unsubscribe(); clearTimeout(splashTimer); window.removeEventListener("beforeinstallprompt", installHandler); };
   }, []);
 
   return (
@@ -282,10 +269,8 @@ function App() {
                     <Navbar role={role} userData={userData} />
                   </>
                 )}
-                
                 <div className={user && role ? "pb-24 md:pt-20 md:pb-0" : ""}>
                   <AnimatedRoutes 
-                    key={loading ? "loading" : "content"} 
                     user={user} 
                     role={role} 
                     userData={userData} 
