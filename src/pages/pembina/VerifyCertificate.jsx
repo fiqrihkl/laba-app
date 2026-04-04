@@ -102,7 +102,7 @@ const VerifyCertificate = () => {
             {/* Semangat Text Section */}
             <div className="mt-4 px-2">
               <p className="text-slate-600 text-[10px] font-bold leading-relaxed">
-                "Sistem mengonfirmasi bahwa identitas di atas adalah pemilik sah dari sertifikat ini. Terima kasih telah menunjukkan dedikasi dan semangat juang yang tinggi dalam kegiatan Laskar Bahari. Teruslah berkarya, pandu sejati!"
+                "Protokol keamanan LASKAR BAHARI mengonfirmasi bahwa identitas di atas adalah pemilik sah yang terdaftar dalam arsip digital Laskar Bahari. Sertifikat ini merupakan manifestasi dari kedisiplinan, ketangguhan, dan loyalitas Anda yang luar biasa di bawah panji Laskar Bahari. Teruslah mengarungi samudera kebaikan dan jadilah mercusuar inspirasi bagi sesama. Jangan pernah berhenti berkarya; dunia menanti dharma baktimu, Pandu Sejati!"
               </p>
             </div>
           </div>
@@ -159,7 +159,7 @@ const VerifyCertificate = () => {
         {/* Footer Technical Metadata */}
         <div className="bg-[#020617] p-3 text-center">
           <p className="text-[6px] text-slate-500 font-mono tracking-widest uppercase opacity-50 italic">
-            Arsip Digital Laskar Bahari • ID-WEST-BIAU • {new Date().getFullYear()}
+            Arsip Digital Laskar Bahari • ID-10.491-10.492 • {new Date().getFullYear()}
           </p>
         </div>
       </motion.div>
@@ -167,7 +167,7 @@ const VerifyCertificate = () => {
       {/* Semangat Footer */}
       <div className="mt-8 text-center px-8 opacity-40">
         <p className="text-slate-500 text-[8px] font-black uppercase tracking-[0.3em] leading-relaxed">
-          Ikhlas Bakti Bina Bangsa Berbudi Bawa Laksana
+          Dilaut Kami Jaya, Didarat Kami Bisa
         </p>
       </div>
     </div>
