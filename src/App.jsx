@@ -59,7 +59,8 @@ import CreateEvent from "./pages/pembina/CreateEvent"; // Form Tambah Kegiatan
 import BulkInputNama from "./pages/pembina/BulkInputNama"; // Form Import Nama
 import ParticipantList from "./pages/pembina/ParticipantList"; // Lihat Daftar Peserta Per Event
 import EditEvent from "./pages/pembina/EditEvent"; // Form Edit Data Kegiatan
-import VerifyCertificate from "./pages/pembina/VerifyCertificate"; // Halaman Publik
+// Halaman Publik (Verifikasi)
+import VerifyCertificate from "./pages/pembina/VerifyCertificate";
 
 
 // Admin
@@ -148,33 +149,55 @@ const AnimatedRoutes = ({ user, role, userData, installPrompt, loading }) => {
         <Route path="/pembina/scanner" element={user && role === "pembina" ? <ScannerPembina /> : <Navigate to="/" replace />} />
         
         {/* --- ALUR MANAJEMEN SERTIFIKAT LASKAR BAHARI --- */}
-{/* 1. Halaman Utama: Daftar Semua Kegiatan */}
-<Route 
-  path="/pembina/event-list" 
-  element={user && (role === "pembina" || role === "admin") ? <EventList /> : <Navigate to="/" replace />} 
-/>
+      {/* ===========================================================
+          RUTE PUBLIK (Bisa diakses tanpa login / Tanpa Proteksi)
+          ===========================================================
+      */}
+      
+      {/* Halaman Verifikasi Sertifikat: /v/NOMOR-SERTIFIKAT */}
+      <Route 
+        path="/v/:certId*" 
+        element={<VerifyCertificate />} 
+      />
 
-{/* 2. Form: Tambah Master Kegiatan Baru */}
-<Route 
-  path="/pembina/create-event" 
-  element={user && (role === "pembina" || role === "admin") ? <CreateEvent /> : <Navigate to="/" replace />} 
-/>
 
-{/* 3. Form: Input Nama Peserta (Massal) berdasarkan ID Event */}
-<Route 
-  path="/pembina/input-nama/:eventId" 
-  element={user && (role === "pembina" || role === "admin") ? <BulkInputNama /> : <Navigate to="/" replace />} 
-/>
+      {/* ===========================================================
+          RUTE PEMBINA / ADMIN (Dilindungi / Protected Routes)
+          ===========================================================
+      */}
 
-{/* 4. Halaman: Detail Daftar Peserta, Export, & Download QR per Event */}
-<Route 
-  path="/pembina/participants/:eventId" 
-  element={user && (role === "pembina" || role === "admin") ? <ParticipantList /> : <Navigate to="/" replace />} 
-/>
+      {/* 1. Halaman Utama: Daftar Semua Kegiatan */}
+      <Route 
+        path="/pembina/event-list" 
+        element={user && (role === "pembina" || role === "admin") ? <EventList /> : <Navigate to="/" replace />} 
+      />
 
-<Route 
-  path="/pembina/edit-event/:eventId" 
-  element={user && (role === "pembina" || role === "admin") ? <EditEvent /> : <Navigate to="/" replace />} />
+      {/* 2. Form: Tambah Master Kegiatan Baru */}
+      <Route 
+        path="/pembina/create-event" 
+        element={user && (role === "pembina" || role === "admin") ? <CreateEvent /> : <Navigate to="/" replace />} 
+      />
+
+      {/* 3. Form: Input Nama Peserta (Massal) berdasarkan ID Event */}
+      <Route 
+        path="/pembina/input-nama/:eventId" 
+        element={user && (role === "pembina" || role === "admin") ? <BulkInputNama /> : <Navigate to="/" replace />} 
+      />
+
+      {/* 4. Halaman: Detail Daftar Peserta, Export, & Download QR per Event */}
+      <Route 
+        path="/pembina/participants/:eventId" 
+        element={user && (role === "pembina" || role === "admin") ? <ParticipantList /> : <Navigate to="/" replace />} 
+      />
+
+      {/* 5. Form: Edit Data Kegiatan */}
+      <Route 
+        path="/pembina/edit-event/:eventId" 
+        element={user && (role === "pembina" || role === "admin") ? <EditEvent /> : <Navigate to="/" replace />} 
+      />
+
+      {/* Rute Fallback (Opsional: Jika path tidak ditemukan) */}
+      <Route path="*" element={<Navigate to="/" replace />} />
 
         {/* --- PROTECTED ROUTES ANGGOTA --- */}
         <Route path="/anggota" element={user && role === "anggota" ? <AnggotaDashboard /> : <Navigate to="/" replace />} />

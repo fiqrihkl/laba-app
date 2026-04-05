@@ -90,14 +90,16 @@ const ParticipantList = () => {
     XLSX.writeFile(workbook, `Database_Sertifikat_${eventInfo?.title || 'Kegiatan'}.xlsx`);
   };
 
-  // --- FUNGSI SALIN LINK ---
-  const copyLink = (certId) => {
-    const fullLink = `${window.location.origin}/v/${certId}`;
-    navigator.clipboard.writeText(fullLink);
-    setCopiedId(certId);
-    setTimeout(() => setCopiedId(null), 2000); // Reset icon setelah 2 detik
-  };
-
+  // --- FUNGSI SALIN LINK (VERSI AMAN) ---
+const copyLink = (certId) => {
+  // Gunakan encodeURIComponent agar karakter seperti / . dan spasi aman di URL
+  const safeCertId = encodeURIComponent(certId);
+  const fullLink = `${window.location.origin}/v/${safeCertId}`;
+  
+  navigator.clipboard.writeText(fullLink);
+  setCopiedId(certId);
+  setTimeout(() => setCopiedId(null), 2000); 
+};
   const filteredParticipants = participants.filter(p => 
     p.namaPenerima.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -185,7 +187,7 @@ const ParticipantList = () => {
 
                   {/* TOMBOL LIHAT VALIDASI */}
                   <button 
-                    onClick={() => window.open(`/v/${p.noSertifikat}`, '_blank')}
+                    onClick={() => window.open(`/v/${encodeURIComponent(p.noSertifikat)}`, '_blank')}
                     className="p-2.5 bg-slate-800 rounded-lg text-blue-500 hover:bg-blue-600 hover:text-white transition-all active:scale-90"
                     title="Buka Halaman Validasi"
                   >
